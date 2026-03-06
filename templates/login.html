@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion | Web CRM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-4">
+    <section class="panel">
+      <div class="panel-head">Authentification</div>
+      <div class="panel-body">
+        <form method="POST" action="/login" class="d-grid gap-3">
+          <input type="hidden" name="next_url" value="{{ next_url }}">
+          <div>
+            <label class="form-label fw-semibold">Nom d'utilisateur</label>
+            <input class="form-control" type="text" name="username" placeholder="admin" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Mot de passe</label>
+            <input class="form-control" type="password" name="password" placeholder="Votre mot de passe" required>
+          </div>
+          <button type="submit" class="btn btn-brand">Se connecter</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

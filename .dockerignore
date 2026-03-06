@@ -1,0 +1,12 @@
+# Ignore local virtual environments and caches
+venv/
+__pycache__/
+*.pyc
+
+# Ignore git and editor metadata
+.git/
+.gitignore
+.vscode/
+
+# Ignore local runtime data
+data/

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Clients | Web CRM{% endblock %}
+
+{% block content %}
+<div class="row g-4 align-items-start">
+  <div class="col-lg-4">
+    <section class="panel">
+      <div class="panel-head">Nouveau client</div>
+      <div class="panel-body">
+        <form action="/add" method="POST" class="d-grid gap-3">
+          <div>
+            <label class="form-label fw-semibold">Nom</label>
+            <input class="form-control" name="nom" placeholder="Ex: Marie Dupont" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Email</label>
+            <input class="form-control" name="email" placeholder="Ex: marie@email.com" type="email" required>
+          </div>
+          <button class="btn btn-brand" type="submit">Ajouter le client</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="col-lg-8">
+    <section class="panel">
+      <div class="panel-head d-flex justify-content-between align-items-center">
+        <span>Liste des clients</span>
+        <span class="badge text-bg-light border">{{ clients|length }} total</span>
+      </div>
+      <div class="panel-body p-0">
+        {% if clients %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th style="width: 80px;">ID</th>
+                <th>Nom</th>
+                <th>Email</th>
+                <th style="width: 220px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for client in clients %}
+              <tr>
+                <td>{{ client.id }}</td>
+                <td class="fw-semibold">{{ client.nom }}</td>
+                <td>{{ client.email }}</td>
+                <td class="d-flex gap-2">
+                  <a class="btn btn-sm btn-outline-primary" href="/edit/{{ client.id }}">Modifier</a>
+                  <a class="btn btn-sm btn-outline-danger" href="/delete/{{ client.id }}">Supprimer</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-3">
+          <div class="empty-state">Aucun client pour le moment.</div>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

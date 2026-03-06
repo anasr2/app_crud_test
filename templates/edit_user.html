@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier Utilisateur | Web CRM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <section class="panel">
+      <div class="panel-head">Modifier l'utilisateur #{{ user.id }}</div>
+      <div class="panel-body">
+        <form action="/users/update/{{ user.id }}" method="POST" class="d-grid gap-3">
+          <div>
+            <label class="form-label fw-semibold">Nom d'utilisateur</label>
+            <input class="form-control" name="username" value="{{ user.username }}" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Email</label>
+            <input class="form-control" name="email" value="{{ user.email }}" type="email" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Mot de passe</label>
+            <input class="form-control" name="password" value="{{ user.password }}" type="password" required>
+          </div>
+          <div class="d-flex justify-content-between">
+            <a class="btn btn-outline-secondary" href="/users">Retour</a>
+            <button class="btn btn-brand" type="submit">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Utilisateurs | Web CRM{% endblock %}
+
+{% block content %}
+<div class="row g-4 align-items-start">
+  <div class="col-lg-4">
+    <section class="panel">
+      <div class="panel-head">Nouvel utilisateur</div>
+      <div class="panel-body">
+        <form action="/users/add" method="POST" class="d-grid gap-3">
+          <div>
+            <label class="form-label fw-semibold">Nom d'utilisateur</label>
+            <input class="form-control" name="username" placeholder="Ex: admin" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Email</label>
+            <input class="form-control" name="email" placeholder="Ex: admin@email.com" type="email" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Mot de passe</label>
+            <input class="form-control" name="password" placeholder="Mot de passe" type="password" required>
+          </div>
+          <button class="btn btn-brand" type="submit">Ajouter l'utilisateur</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="col-lg-8">
+    <section class="panel">
+      <div class="panel-head d-flex justify-content-between align-items-center">
+        <span>Liste des utilisateurs</span>
+        <span class="badge text-bg-light border">{{ users|length }} total</span>
+      </div>
+      <div class="panel-body p-0">
+        {% if users %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th style="width: 80px;">ID</th>
+                <th>Nom d'utilisateur</th>
+                <th>Email</th>
+                <th style="width: 220px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+              <tr>
+                <td>{{ user.id }}</td>
+                <td class="fw-semibold">{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td class="d-flex gap-2">
+                  <a class="btn btn-sm btn-outline-primary" href="/users/edit/{{ user.id }}">Modifier</a>
+                  <a class="btn btn-sm btn-outline-danger" href="/users/delete/{{ user.id }}">Supprimer</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-3">
+          <div class="empty-state">Aucun utilisateur pour le moment.</div>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
