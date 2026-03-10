@@ -1,29 +1,489 @@
 {% extends "base.html" %}
 
-{% block title %}Modifier Client | Web CRM{% endblock %}
+{% block title %}Modifier Contact | Web CRM{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6">
+<div class="row g-3 align-items-start">
+  <div class="col-xl-7">
     <section class="panel">
-      <div class="panel-head">Modifier le client #{{ client.id }}</div>
+      <div class="panel-head d-flex justify-content-between align-items-center">
+        <span>Fiche client #{{ client.id }}</span>
+        <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#clientModal">Modifier la fiche</button>
+      </div>
       <div class="panel-body">
-        <form action="/update/{{ client.id }}" method="POST" class="d-grid gap-3">
-          <div>
-            <label class="form-label fw-semibold">Nom</label>
-            <input class="form-control" name="nom" value="{{ client.nom }}" required>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="text-muted small">Contact</div>
+            <div class="fw-semibold">{{ client.nom }}</div>
+            <div>{{ client.email }}</div>
+            {% if client.telephone %}<div>{{ client.telephone }}</div>{% endif %}
           </div>
-          <div>
-            <label class="form-label fw-semibold">Email</label>
-            <input class="form-control" name="email" value="{{ client.email }}" type="email" required>
+          <div class="col-md-6">
+            <div class="text-muted small">Entreprise</div>
+            <div class="fw-semibold">{{ client.entreprise }}</div>
+            <div class="mt-1">
+              <span class="badge-status badge-{{ client.statut }}">{{ status_choices.get(client.statut, client.statut) }}</span>
+            </div>
+            <div class="text-muted small mt-1">Source: {{ source_choices.get(client.source, client.source) }}</div>
           </div>
-          <div class="d-flex justify-content-between">
-            <a class="btn btn-outline-secondary" href="/">Retour</a>
-            <button class="btn btn-brand" type="submit">Enregistrer</button>
+          <div class="col-md-4">
+            <div class="text-muted small">Valeur potentielle</div>
+            <div class="fw-semibold">{{ "%.0f"|format(client.valeur_potentielle or 0) }} MAD</div>
           </div>
-        </form>
+          <div class="col-md-8">
+            <div class="text-muted small">Prochaine action</div>
+            <div>{{ client.prochaine_action or "Aucune action planifiee" }}</div>
+          </div>
+          <div class="col-12">
+            <div class="text-muted small">Notes CRM</div>
+            <div>{{ client.notes or "Aucune note." }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel mt-3">
+      <div class="panel-head d-flex justify-content-between align-items-center">
+        <span>Projets du client</span>
+        <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addProjectModal">Nouveau projet</button>
+      </div>
+      <div class="panel-body">
+        {% if client.projects %}
+        <div class="d-grid gap-2">
+          {% for project in client.projects %}
+          <article class="border rounded-3 p-3 bg-light-subtle">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="fw-semibold">{{ project.name }}</div>
+                <div class="text-muted small">
+                  {{ project_status_choices.get(project.status, project.status) }} | Priorite {{ project_priority_choices.get(project.priority, project.priority) }}
+                </div>
+                <div class="text-muted small mt-1">
+                  Budget: {{ "%.0f"|format(project.budget or 0) }} MAD | Progression: {{ project.progress }}%
+                </div>
+                {% if project.owner or project.due_date %}
+                <div class="text-muted small mt-1">
+                  {% if project.owner %}Resp.: {{ project.owner }}{% endif %}
+                  {% if project.owner and project.due_date %} | {% endif %}
+                  {% if project.due_date %}Echeance: {{ project.due_date.strftime("%d/%m/%Y") }}{% endif %}
+                </div>
+                {% endif %}
+                {% if project.description %}
+                <div class="mt-2">{{ project.description }}</div>
+                {% endif %}
+              </div>
+              <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#projectModal{{ project.id }}">Mettre a jour</button>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">Aucun projet rattache a ce client.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel mt-3">
+      <div class="panel-head d-flex justify-content-between align-items-center">
+        <span>Historique de la relation</span>
+        <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addInteractionModal">Nouvelle interaction</button>
+      </div>
+      <div class="panel-body">
+        {% if client.interactions %}
+        <div class="d-grid gap-2">
+          {% for interaction in client.interactions %}
+          <article class="border rounded-3 p-3 bg-light-subtle">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="fw-semibold">{{ interaction.summary }}</div>
+                <div class="text-muted small">
+                  {{ interaction_types.get(interaction.interaction_type, interaction.interaction_type) }}
+                  {% if interaction.created_by %} par {{ interaction.created_by }}{% endif %}
+                </div>
+                {% if interaction.details %}
+                <div class="mt-2">{{ interaction.details }}</div>
+                {% endif %}
+              </div>
+              <div class="text-end">
+                <div class="text-muted small text-nowrap mb-2">{{ interaction.created_at.strftime("%d/%m/%Y %H:%M") }}</div>
+                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#interactionModal{{ interaction.id }}">Mettre a jour</button>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">Aucune interaction enregistree pour ce client.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="col-xl-5">
+    <section class="panel">
+      <div class="panel-head d-flex justify-content-between align-items-center">
+        <span>Documents client</span>
+        <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Nouveau document</button>
+      </div>
+      <div class="panel-body">
+        {% if client.documents %}
+        <div class="d-grid gap-2">
+          {% for document in client.documents %}
+          <article class="border rounded-3 p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="fw-semibold">{{ document.original_name }}</div>
+                {% if document.description %}
+                <div class="text-muted small mt-1">{{ document.description }}</div>
+                {% endif %}
+                <div class="text-muted small mt-1">
+                  Ajoute le {{ document.created_at.strftime("%d/%m/%Y %H:%M") }}
+                </div>
+              </div>
+              <div class="d-grid gap-2">
+                <a class="btn btn-sm btn-outline-primary" href="/clients/{{ client.id }}/documents/{{ document.id }}">Telecharger</a>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#documentModal{{ document.id }}">Mettre a jour</button>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">Aucun document attache a ce client.</div>
+        {% endif %}
       </div>
     </section>
   </div>
 </div>
+
+<div class="modal fade" id="clientModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/update/{{ client.id }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Modifier la fiche client</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Nom</label>
+              <input class="form-control" name="nom" value="{{ client.nom }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Entreprise</label>
+              <input class="form-control" name="entreprise" value="{{ client.entreprise }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email</label>
+              <input class="form-control" name="email" value="{{ client.email }}" type="email" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Telephone</label>
+              <input class="form-control" name="telephone" value="{{ client.telephone }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Statut</label>
+              <select class="form-control" name="statut">
+                {% for value, label in status_choices.items() %}
+                <option value="{{ value }}" {% if client.statut == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Source</label>
+              <select class="form-control" name="source">
+                {% for value, label in source_choices.items() %}
+                <option value="{{ value }}" {% if client.source == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Valeur potentielle</label>
+              <input class="form-control" name="valeur_potentielle" value="{{ client.valeur_potentielle or 0 }}" type="number" min="0" step="0.01">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Prochaine action</label>
+              <input class="form-control" name="prochaine_action" value="{{ client.prochaine_action }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Notes CRM</label>
+              <textarea class="form-control" name="notes" rows="5">{{ client.notes }}</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addProjectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/projects/add" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Ajouter un projet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Nom du projet</label>
+              <input class="form-control" name="name" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Statut</label>
+              <select class="form-control" name="status">
+                {% for value, label in project_status_choices.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Priorite</label>
+              <select class="form-control" name="priority">
+                {% for value, label in project_priority_choices.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Budget</label>
+              <input class="form-control" name="budget" type="number" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Progression %</label>
+              <input class="form-control" name="progress" type="number" min="0" max="100" value="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Echeance</label>
+              <input class="form-control" name="due_date" type="date">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Responsable</label>
+              <input class="form-control" name="owner">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" name="description" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Ajouter le projet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addInteractionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/history/add" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Ajouter une interaction</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Type</label>
+              <select class="form-control" name="interaction_type">
+                {% for value, label in interaction_types.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Resume</label>
+              <input class="form-control" name="summary" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Details</label>
+              <textarea class="form-control" name="details" rows="4"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addDocumentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/documents/add" method="POST" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Ajouter un document</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Fichier</label>
+              <input class="form-control" name="document" type="file" required>
+              <div class="form-text">Formats acceptes: PDF, Office, images, TXT. Taille max: 16 Mo.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <input class="form-control" name="description">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Ajouter le document</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% for project in client.projects %}
+<div class="modal fade" id="projectModal{{ project.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/projects/{{ project.id }}/update" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Mettre a jour le projet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Projet</label>
+              <input class="form-control" name="name" value="{{ project.name }}" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Statut</label>
+              <select class="form-control" name="status">
+                {% for value, label in project_status_choices.items() %}
+                <option value="{{ value }}" {% if project.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Priorite</label>
+              <select class="form-control" name="priority">
+                {% for value, label in project_priority_choices.items() %}
+                <option value="{{ value }}" {% if project.priority == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Budget</label>
+              <input class="form-control" name="budget" type="number" min="0" step="0.01" value="{{ project.budget or 0 }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Progression</label>
+              <input class="form-control" name="progress" type="number" min="0" max="100" value="{{ project.progress }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Echeance</label>
+              <input class="form-control" name="due_date" type="date" value="{{ project.due_date.isoformat() if project.due_date else '' }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Responsable</label>
+              <input class="form-control" name="owner" value="{{ project.owner }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" name="description" rows="3">{{ project.description }}</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Mettre a jour</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% for interaction in client.interactions %}
+<div class="modal fade" id="interactionModal{{ interaction.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/history/{{ interaction.id }}/update" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Mettre a jour l'interaction</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Type</label>
+              <select class="form-control" name="interaction_type">
+                {% for value, label in interaction_types.items() %}
+                <option value="{{ value }}" {% if interaction.interaction_type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Resume</label>
+              <input class="form-control" name="summary" value="{{ interaction.summary }}" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Details</label>
+              <textarea class="form-control" name="details" rows="4">{{ interaction.details }}</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Mettre a jour</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% for document in client.documents %}
+<div class="modal fade" id="documentModal{{ document.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/documents/{{ document.id }}/update" method="POST" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Mettre a jour le document</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Document actuel</label>
+              <div class="fw-semibold">{{ document.original_name }}</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Remplacer le fichier</label>
+              <input class="form-control" name="document" type="file">
+              <div class="form-text">Laisse vide si tu veux seulement modifier la description.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <input class="form-control" name="description" value="{{ document.description }}">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Mettre a jour</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}

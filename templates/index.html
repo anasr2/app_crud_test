@@ -1,33 +1,123 @@
 {% extends "base.html" %}
 
-{% block title %}Clients | Web CRM{% endblock %}
+{% block title %}CRM Commercial | Web CRM{% endblock %}
 
 {% block content %}
-<div class="row g-4 align-items-start">
-  <div class="col-lg-4">
+<div class="row g-2 mb-3">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Contacts</span>
+      <div class="stat-value">{{ stats.total }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Pipeline actif</span>
+      <div class="stat-value">{{ stats.actifs }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Clients signes</span>
+      <div class="stat-value">{{ stats.clients }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Projets actifs</span>
+      <div class="stat-value">{{ stats.projects }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 align-items-start">
+  <div class="col-xl-4">
     <section class="panel">
-      <div class="panel-head">Nouveau client</div>
+      <div class="panel-head">Nouveau contact CRM</div>
       <div class="panel-body">
-        <form action="/add" method="POST" class="d-grid gap-3">
-          <div>
-            <label class="form-label fw-semibold">Nom</label>
-            <input class="form-control" name="nom" placeholder="Ex: Marie Dupont" required>
+        <form action="/add" method="POST" class="d-grid gap-2">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Nom</label>
+              <input class="form-control" name="nom" placeholder="Ex: Marie Dupont" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Entreprise</label>
+              <input class="form-control" name="entreprise" placeholder="Ex: Atlas Conseil" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Email</label>
+              <input class="form-control" name="email" placeholder="Ex: marie@email.com" type="email" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Telephone</label>
+              <input class="form-control" name="telephone" placeholder="Ex: +212 6 12 34 56 78">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Valeur potentielle</label>
+              <input class="form-control" name="valeur_potentielle" placeholder="Ex: 25000" type="number" min="0" step="0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Statut</label>
+              <select class="form-control" name="statut">
+                {% for value, label in status_choices.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Source</label>
+              <select class="form-control" name="source">
+                {% for value, label in source_choices.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Prochaine action</label>
+              <input class="form-control" name="prochaine_action" placeholder="Ex: Appel de qualification mardi 10h">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Notes</label>
+              <textarea class="form-control" name="notes" rows="4" placeholder="Contexte commercial, objections, besoins..."></textarea>
+            </div>
           </div>
-          <div>
-            <label class="form-label fw-semibold">Email</label>
-            <input class="form-control" name="email" placeholder="Ex: marie@email.com" type="email" required>
-          </div>
-          <button class="btn btn-brand" type="submit">Ajouter le client</button>
+          <button class="btn btn-brand" type="submit">Ajouter au CRM</button>
         </form>
       </div>
     </section>
   </div>
 
-  <div class="col-lg-8">
+  <div class="col-xl-8">
+    <section class="panel mb-3">
+      <div class="panel-head">Recherche et filtres</div>
+      <div class="panel-body">
+        <form method="GET" action="/" class="row g-2 align-items-end">
+          <div class="col-md-7">
+            <label class="form-label fw-semibold">Recherche</label>
+            <input class="form-control" name="q" value="{{ search }}" placeholder="Nom, email, entreprise ou telephone">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Statut</label>
+            <select class="form-control" name="status">
+              <option value="">Tous</option>
+              {% for value, label in status_choices.items() %}
+              <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 d-grid gap-2">
+            <button class="btn btn-brand" type="submit">Filtrer</button>
+            <a class="btn btn-outline-secondary" href="/">Reset</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <section class="panel">
       <div class="panel-head d-flex justify-content-between align-items-center">
-        <span>Liste des clients</span>
-        <span class="badge text-bg-light border">{{ clients|length }} total</span>
+        <span>Pipeline clients</span>
+        <span class="badge text-bg-light border">{{ clients|length }} resultat(s)</span>
       </div>
       <div class="panel-body p-0">
         {% if clients %}
@@ -35,30 +125,71 @@
           <table class="table table-hover align-middle">
             <thead>
               <tr>
-                <th style="width: 80px;">ID</th>
-                <th>Nom</th>
-                <th>Email</th>
+                <th>Contact</th>
+                <th>Pipeline</th>
+                <th>Valeur</th>
+                <th>Suivi</th>
+                <th>Projets</th>
                 <th style="width: 220px;">Actions</th>
               </tr>
             </thead>
             <tbody>
               {% for client in clients %}
               <tr>
-                <td>{{ client.id }}</td>
-                <td class="fw-semibold">{{ client.nom }}</td>
-                <td>{{ client.email }}</td>
+                <td>
+                  <div class="fw-semibold">{{ client.nom }}</div>
+                  <div class="text-muted small">{{ client.entreprise or "Sans entreprise" }}</div>
+                  <div class="text-muted small">{{ client.email }}</div>
+                  {% if client.telephone %}
+                  <div class="text-muted small">{{ client.telephone }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge-status badge-{{ client.statut }}">{{ status_choices.get(client.statut, client.statut) }}</span>
+                  <div class="text-muted small mt-2">Source: {{ source_choices.get(client.source, client.source) }}</div>
+                </td>
+                <td class="fw-semibold">{{ "%.0f"|format(client.valeur_potentielle or 0) }} MAD</td>
+                <td>
+                  {% if client.prochaine_action %}
+                  <div>{{ client.prochaine_action }}</div>
+                  {% else %}
+                  <div class="text-muted">Aucune action planifiee</div>
+                  {% endif %}
+                  {% if client.updated_at %}
+                  <div class="text-muted small mt-2">Maj: {{ client.updated_at.strftime("%d/%m/%Y %H:%M") }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if client.projects %}
+                  {% set project = client.projects[0] %}
+                  <div class="fw-semibold">{{ project.name }}</div>
+                  <div class="text-muted small">{{ project_status_choices.get(project.status, project.status) }} - {{ project.progress }}%</div>
+                  {% if client.projects|length > 1 %}
+                  <div class="text-muted small mt-1">+ {{ client.projects|length - 1 }} autre(s)</div>
+                  {% endif %}
+                  {% else %}
+                  <div class="text-muted">Aucun projet</div>
+                  {% endif %}
+                </td>
                 <td class="d-flex gap-2">
                   <a class="btn btn-sm btn-outline-primary" href="/edit/{{ client.id }}">Modifier</a>
                   <a class="btn btn-sm btn-outline-danger" href="/delete/{{ client.id }}">Supprimer</a>
                 </td>
               </tr>
+              {% if client.notes %}
+              <tr>
+                <td colspan="6" class="bg-light-subtle">
+                  <span class="fw-semibold">Notes:</span> {{ client.notes }}
+                </td>
+              </tr>
+              {% endif %}
               {% endfor %}
             </tbody>
           </table>
         </div>
         {% else %}
         <div class="p-3">
-          <div class="empty-state">Aucun client pour le moment.</div>
+          <div class="empty-state">Aucun contact ne correspond aux filtres actuels.</div>
         </div>
         {% endif %}
       </div>
