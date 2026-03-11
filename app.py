@@ -31,15 +31,27 @@ def load_dotenv(dotenv_path=".env"):
 
 load_dotenv()
 
+
+def resolve_database_url():
+    database_url = os.getenv(
+        "DATABASE_URL",
+        "mssql+pyodbc://@localhost\\SQLEXPRESS/testdb?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes",
+    )
+    sqlite_prefix = "sqlite:///"
+    if database_url.startswith(sqlite_prefix):
+        sqlite_target = database_url[len(sqlite_prefix):]
+        if sqlite_target and not Path(sqlite_target).is_absolute():
+            absolute_sqlite_path = (Path(__file__).resolve().parent / sqlite_target).resolve()
+            return f"{sqlite_prefix}{absolute_sqlite_path.as_posix()}"
+    return database_url
+
+
 # Creation de l'application Flask.
 app = Flask(__name__)
 
 # Configuration de la connexion a la base de donnees.
 # Priorite a la variable d'environnement DATABASE_URL, sinon fallback local SQL Server.
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-    "DATABASE_URL",
-    "mssql+pyodbc://@localhost\\SQLEXPRESS/testdb?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes",
-)
+app.config["SQLALCHEMY_DATABASE_URI"] = resolve_database_url()
 # Desactive le suivi des modifications SQLAlchemy (cout CPU inutile ici).
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Cle de session Flask (a surcharger en production).

@@ -1,0 +1,122 @@
+DEPLOIEMENT RAPIDE SUR LE WEB
+=============================
+
+Cette application peut etre mise en ligne rapidement avec Docker sur un serveur Linux.
+
+1. PRE-REQUIS
+-------------
+- Un serveur Linux ou VPS Ubuntu/Debian
+- Un acces SSH au serveur
+- Git installe
+- Docker et Docker Compose installes
+- Un domaine si vous voulez un acces public propre
+
+
+2. INSTALLER DOCKER SUR LE SERVEUR
+----------------------------------
+Commandes de base :
+
+sudo apt update
+sudo apt install -y docker.io docker-compose-plugin git
+sudo systemctl enable --now docker
+
+
+3. RECUPERER LE PROJET
+----------------------
+Cloner le depot :
+
+git clone https://github.com/anasr2/app_crud_test.git
+cd app_crud_test
+
+
+4. CONFIGURER LE FICHIER .env
+-----------------------------
+Creer ou adapter le fichier .env avec les variables principales :
+
+DATABASE_URL=sqlite:////app/data/app.db
+APP_BASE_URL=http://IP_DU_SERVEUR:5000
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=ton_email@gmail.com
+SMTP_PASSWORD=mot_de_passe_application
+SMTP_FROM=ton_email@gmail.com
+SMTP_USE_TLS=1
+
+INVITATION_EXPIRY_HOURS=72
+
+Remarques :
+- Pour un deploiement rapide, SQLite suffit si l'application est utilisee par peu de personnes.
+- Le fichier SQLite sera stocke dans /app/data/app.db via le volume Docker.
+- Pour un usage plus serieux, preferer PostgreSQL ou SQL Server.
+
+
+5. LANCER L'APPLICATION
+-----------------------
+Depuis le dossier du projet :
+
+docker compose up -d --build
+
+
+6. VERIFIER QUE L'APPLICATION TOURNE
+------------------------------------
+Verifier les conteneurs :
+
+docker ps
+
+Verifier les logs :
+
+docker compose logs -f
+
+Tester dans le navigateur :
+
+http://IP_DU_SERVEUR:5000
+
+
+7. METTRE A JOUR PLUS TARD
+--------------------------
+Quand il y a de nouveaux changements :
+
+git pull
+docker compose up -d --build
+
+
+8. OUVRIR L'APPLICATION SUR INTERNET
+------------------------------------
+Pour un acces public propre, il faut en plus :
+- Pointer un nom de domaine vers l'IP du serveur
+- Installer Nginx en reverse proxy
+- Activer HTTPS avec Let's Encrypt
+
+Le deploiement rapide ci-dessus fonctionne deja sans cela, mais l'acces se fera directement sur le port 5000.
+
+
+9. LIMITES DU DEPLOIEMENT RAPIDE
+--------------------------------
+- SQLite convient pour un petit usage ou une petite equipe
+- Pas ideal pour de nombreuses ecritures simultanees
+- Le port 5000 ne doit pas rester expose tel quel sur une vraie production sans proxy inverse
+- La cle Flask et les variables SMTP doivent etre securisees en production
+
+
+10. FICHIERS UTILISES PAR LE PROJET
+-----------------------------------
+- Dockerfile
+- docker-compose.yml
+- wsgi.py
+- .env
+
+
+11. RESUME RAPIDE
+-----------------
+Commandes minimales :
+
+sudo apt update
+sudo apt install -y docker.io docker-compose-plugin git
+git clone https://github.com/anasr2/app_crud_test.git
+cd app_crud_test
+docker compose up -d --build
+
+Puis ouvrir :
+
+http://IP_DU_SERVEUR:5000

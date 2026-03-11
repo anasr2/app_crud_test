@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
 
@@ -30,12 +32,13 @@ class Client(db.Model):
     # Notes libres du commercial.
     notes = db.Column(db.String(2000), nullable=False, default="")
     # Horodatages utiles pour suivre l'activite.
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
+        default=datetime.utcnow,
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=datetime.utcnow,
     )
     # Documents associes a la fiche client.
     documents = db.relationship(
@@ -74,7 +77,7 @@ class ClientDocument(db.Model):
     file_path = db.Column(db.String(500), nullable=False)
     content_type = db.Column(db.String(120), nullable=False, default="")
     description = db.Column(db.String(255), nullable=False, default="")
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
 
 
 class ClientInteraction(db.Model):
@@ -87,7 +90,7 @@ class ClientInteraction(db.Model):
     summary = db.Column(db.String(255), nullable=False)
     details = db.Column(db.String(2000), nullable=False, default="")
     created_by = db.Column(db.String(100), nullable=False, default="")
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
 
 
 class ClientProject(db.Model):
@@ -104,12 +107,13 @@ class ClientProject(db.Model):
     due_date = db.Column(db.Date, nullable=True)
     owner = db.Column(db.String(100), nullable=False, default="")
     description = db.Column(db.String(2000), nullable=False, default="")
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
+        default=datetime.utcnow,
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=datetime.utcnow,
     )
     steps = db.relationship(
         "ClientProjectStep",
@@ -132,12 +136,13 @@ class ClientProjectStep(db.Model):
     due_date = db.Column(db.Date, nullable=True)
     owner = db.Column(db.String(100), nullable=False, default="")
     notes = db.Column(db.String(2000), nullable=False, default="")
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
+        default=datetime.utcnow,
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=datetime.utcnow,
     )
 
 

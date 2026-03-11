@@ -1,0 +1,145 @@
+DEPLOIEMENT PRODUCTION AVEC NGINX ET HTTPS
+==========================================
+
+Ce guide explique comment publier l'application sur un serveur Linux avec :
+- Docker
+- Nginx
+- un nom de domaine
+- HTTPS avec Let's Encrypt
+
+
+1. PRE-REQUIS
+-------------
+- Un VPS Ubuntu ou Debian
+- Un nom de domaine pointe vers l'IP du serveur
+- Un acces SSH au serveur
+- Les ports 80 et 443 ouverts
+
+
+2. INSTALLER LES OUTILS
+-----------------------
+sudo apt update
+sudo apt install -y docker.io docker-compose-plugin git nginx certbot python3-certbot-nginx
+sudo systemctl enable --now docker
+sudo systemctl enable --now nginx
+
+
+3. RECUPERER LE PROJET
+----------------------
+git clone https://github.com/anasr2/app_crud_test.git
+cd app_crud_test
+
+
+4. CONFIGURER LE FICHIER .env
+-----------------------------
+Exemple :
+
+DATABASE_URL=sqlite:////app/data/app.db
+APP_BASE_URL=https://crm.ton-domaine.com
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=ton_email@gmail.com
+SMTP_PASSWORD=mot_de_passe_application
+SMTP_FROM=ton_email@gmail.com
+SMTP_USE_TLS=1
+
+INVITATION_EXPIRY_HOURS=72
+
+Remarques :
+- Remplacer crm.ton-domaine.com par votre vrai domaine
+- Pour un usage limite, SQLite peut suffire
+- Pour un usage plus important, preferer PostgreSQL ou SQL Server
+
+
+5. DEMARRER L'APPLICATION
+-------------------------
+docker compose up -d --build
+
+Verifier :
+
+docker ps
+docker compose logs -f
+
+
+6. CONFIGURER NGINX
+-------------------
+Creer un fichier :
+
+sudo nano /etc/nginx/sites-available/app_web_python
+
+Contenu type :
+
+server {
+    listen 80;
+    server_name crm.ton-domaine.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+Activer le site :
+
+sudo ln -s /etc/nginx/sites-available/app_web_python /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+
+7. ACTIVER HTTPS
+----------------
+Lancer :
+
+sudo certbot --nginx -d crm.ton-domaine.com
+
+Puis suivre l'assistant.
+
+Verifier ensuite :
+
+https://crm.ton-domaine.com
+
+
+8. MISE A JOUR DE L'APPLICATION
+-------------------------------
+Quand vous modifiez le projet :
+
+git pull
+docker compose up -d --build
+sudo systemctl reload nginx
+
+
+9. VERIFICATIONS IMPORTANTES
+----------------------------
+- Le domaine pointe bien vers le serveur
+- Nginx ecoute sur 80 et 443
+- Docker expose bien l'application sur 5000
+- APP_BASE_URL contient l'URL HTTPS finale
+- Les emails SMTP sont correctement configures
+
+
+10. LIMITES ET BONNES PRATIQUES
+-------------------------------
+- Ne pas exposer le port 5000 directement sur Internet en production
+- Utiliser HTTPS pour les connexions utilisateurs
+- Sauvegarder regulierement le fichier SQLite si vous restez sur SQLite
+- Pour plusieurs utilisateurs actifs, preferer PostgreSQL ou SQL Server
+- Remplacer les secrets par des vraies valeurs securisees
+
+
+11. RESUME COURT
+----------------
+sudo apt update
+sudo apt install -y docker.io docker-compose-plugin git nginx certbot python3-certbot-nginx
+git clone https://github.com/anasr2/app_crud_test.git
+cd app_crud_test
+docker compose up -d --build
+
+Configurer Nginx
+Activer certbot
+Ouvrir :
+
+https://crm.ton-domaine.com
