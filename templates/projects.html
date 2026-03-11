@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Vue Projets | Web CRM{% endblock %}
+
+{% block content %}
+<div class="row g-2 mb-3">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Projets</span>
+      <div class="stat-value">{{ stats.total }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">En cours</span>
+      <div class="stat-value">{{ stats.in_progress }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Termines</span>
+      <div class="stat-value">{{ stats.done }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <span class="stat-label">Etapes</span>
+      <div class="stat-value">{{ stats.steps }}</div>
+    </div>
+  </div>
+</div>
+
+<section class="panel mb-3">
+  <div class="panel-head">Recherche et filtres projets</div>
+  <div class="panel-body">
+    <form method="GET" action="/projects" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label fw-semibold">Recherche</label>
+        <input class="form-control" name="q" value="{{ search }}" placeholder="Projet, responsable, client ou entreprise">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Statut</label>
+        <select class="form-control" name="status">
+          <option value="">Tous</option>
+          {% for value, label in project_status_choices.items() %}
+          <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">Priorite</label>
+        <select class="form-control" name="priority">
+          <option value="">Toutes</option>
+          {% for value, label in project_priority_choices.items() %}
+          <option value="{{ value }}" {% if selected_priority == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-grid gap-2">
+        <button class="btn btn-brand" type="submit">Filtrer</button>
+        <a class="btn btn-outline-secondary" href="/projects">Reset</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head d-flex justify-content-between align-items-center">
+    <span>Portefeuille projets</span>
+    <span class="badge text-bg-light border">{{ projects|length }} resultat(s)</span>
+  </div>
+  <div class="panel-body">
+    {% if projects %}
+    <div class="row g-3">
+      {% for project in projects %}
+      <div class="col-12 col-xl-6">
+        <article class="border rounded-4 p-3 h-100 bg-light-subtle">
+          <div class="d-flex justify-content-between align-items-start gap-3">
+            <div>
+              <div class="fw-semibold fs-5">{{ project.name }}</div>
+              <div class="text-muted small mt-1">
+                Client: {{ project.client.nom }}{% if project.client.entreprise %} | {{ project.client.entreprise }}{% endif %}
+              </div>
+            </div>
+            <a class="btn btn-sm btn-outline-primary" href="/edit/{{ project.client.id }}">Ouvrir</a>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <span class="badge text-bg-light border">{{ project_status_choices.get(project.status, project.status) }}</span>
+            <span class="badge text-bg-light border">Priorite {{ project_priority_choices.get(project.priority, project.priority) }}</span>
+            <span class="badge text-bg-light border">{{ project.progress }}% progression</span>
+          </div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-sm-6">
+              <div class="text-muted small">Responsable</div>
+              <div>{{ project.owner or "Non assigne" }}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-muted small">Echeance</div>
+              <div>{{ project.due_date.strftime("%d/%m/%Y") if project.due_date else "Non definie" }}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-muted small">Budget</div>
+              <div>{{ "%.0f"|format(project.budget or 0) }} MAD</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-muted small">Etapes</div>
+              <div>{{ project.steps|length }}</div>
+            </div>
+          </div>
+
+          {% if project.description %}
+          <div class="mt-3">
+            <div class="text-muted small">Description</div>
+            <div>{{ project.description }}</div>
+          </div>
+          {% endif %}
+
+          <div class="mt-3 pt-3 border-top">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold">Avancement par etapes</div>
+              <div class="text-muted small">
+                {{ project.steps|selectattr("status", "equalto", "terminee")|list|length }}/{{ project.steps|length }} terminee(s)
+              </div>
+            </div>
+            {% if project.steps %}
+            <div class="d-grid gap-2">
+              {% for step in project.steps %}
+              <div class="border rounded-3 p-2 bg-white">
+                <div class="d-flex justify-content-between gap-3">
+                  <div>
+                    <div class="fw-semibold">{{ step.sort_order }}. {{ step.title }}</div>
+                    {% if step.notes %}
+                    <div class="text-muted small mt-1">{{ step.notes }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="text-end">
+                    <div class="small">{{ project_step_status_choices.get(step.status, step.status) }}</div>
+                    {% if step.due_date %}
+                    <div class="text-muted small">{{ step.due_date.strftime("%d/%m/%Y") }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">Aucune etape definie pour ce projet.</div>
+            {% endif %}
+          </div>
+        </article>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">Aucun projet ne correspond aux filtres actuels.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

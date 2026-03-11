@@ -76,8 +76,49 @@
                 <div class="mt-2">{{ project.description }}</div>
                 {% endif %}
               </div>
-              {% if can_manage_clients %}
-              <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#projectModal{{ project.id }}">Mettre a jour</button>
+              <div class="d-grid gap-2">
+                {% if can_manage_clients %}
+                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#projectModal{{ project.id }}">Mettre a jour</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addStepModal{{ project.id }}">Ajouter une etape</button>
+                {% endif %}
+              </div>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="fw-semibold">Etapes du projet</div>
+                <span class="text-muted small">{{ project.steps|length }} etape(s)</span>
+              </div>
+              {% if project.steps %}
+              <div class="d-grid gap-2">
+                {% for step in project.steps %}
+                <article class="border rounded-3 p-2 bg-white">
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                      <div class="fw-semibold">{{ step.sort_order }}. {{ step.title }}</div>
+                      <div class="text-muted small mt-1">
+                        Statut: {{ project_step_status_choices.get(step.status, step.status) }}
+                        {% if step.owner %} | Resp.: {{ step.owner }}{% endif %}
+                        {% if step.due_date %} | Echeance: {{ step.due_date.strftime("%d/%m/%Y") }}{% endif %}
+                      </div>
+                      {% if step.notes %}
+                      <div class="mt-2 small">{{ step.notes }}</div>
+                      {% endif %}
+                    </div>
+                    {% if can_manage_clients %}
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#stepModal{{ step.id }}">Mettre a jour</button>
+                      <form action="/clients/{{ client.id }}/projects/{{ project.id }}/steps/{{ step.id }}/delete" method="POST" class="m-0">
+                        {{ csrf_input() }}
+                        <button class="btn btn-sm btn-outline-danger" type="submit" onclick='return confirm({{ ("Confirmer la suppression de l etape " ~ step.title ~ " ?")|tojson }});'>Supprimer</button>
+                      </form>
+                    </div>
+                    {% endif %}
+                  </div>
+                </article>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="empty-state">Aucune etape definie pour ce projet.</div>
               {% endif %}
             </div>
           </article>
@@ -369,6 +410,56 @@
 </div>
 
 {% for project in client.projects %}
+<div class="modal fade" id="addStepModal{{ project.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/projects/{{ project.id }}/steps/add" method="POST">
+        {{ csrf_input() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Ajouter une etape au projet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Nom de l'etape</label>
+              <input class="form-control" name="title" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Ordre</label>
+              <input class="form-control" name="sort_order" type="number" min="1" value="{{ project.steps|length + 1 }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Statut</label>
+              <select class="form-control" name="status">
+                {% for value, label in project_step_status_choices.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Responsable</label>
+              <input class="form-control" name="owner">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Echeance</label>
+              <input class="form-control" name="due_date" type="date">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Notes</label>
+              <textarea class="form-control" name="notes" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Ajouter l'etape</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="projectModal{{ project.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
@@ -430,6 +521,60 @@
     </div>
   </div>
 </div>
+{% endfor %}
+
+{% for project in client.projects %}
+  {% for step in project.steps %}
+<div class="modal fade" id="stepModal{{ step.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form action="/clients/{{ client.id }}/projects/{{ project.id }}/steps/{{ step.id }}/update" method="POST">
+        {{ csrf_input() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Mettre a jour l'etape</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Nom de l'etape</label>
+              <input class="form-control" name="title" value="{{ step.title }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Ordre</label>
+              <input class="form-control" name="sort_order" type="number" min="1" value="{{ step.sort_order }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Statut</label>
+              <select class="form-control" name="status">
+                {% for value, label in project_step_status_choices.items() %}
+                <option value="{{ value }}" {% if step.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Responsable</label>
+              <input class="form-control" name="owner" value="{{ step.owner }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Echeance</label>
+              <input class="form-control" name="due_date" type="date" value="{{ step.due_date.isoformat() if step.due_date else '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Notes</label>
+              <textarea class="form-control" name="notes" rows="3">{{ step.notes }}</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-brand" type="submit">Mettre a jour</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+  {% endfor %}
 {% endfor %}
 
 {% for interaction in client.interactions %}

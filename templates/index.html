@@ -28,70 +28,26 @@
       <div class="stat-value">{{ stats.projects }}</div>
     </div>
   </div>
+  {% if can_manage_clients %}
+  <div class="col-12">
+    <section class="panel">
+      <div class="panel-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+        <div>
+          <div class="feature-form-kicker">Nouveau client</div>
+          <h2 class="feature-form-title mb-1">Ajoute un contact sans quitter le pipeline</h2>
+          <p class="feature-form-copy">Ouvre la fiche en pop-up pour saisir rapidement les informations commerciales et revenir aussitot a la liste.</p>
+        </div>
+        <button class="btn btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addClientModal">
+          Ajouter un client
+        </button>
+      </div>
+    </section>
+  </div>
+  {% endif %}
 </div>
 
 <div class="row g-3 align-items-start">
-  <div class="col-xl-4">
-    {% if can_manage_clients %}
-    <section class="panel">
-      <div class="panel-head">Nouveau contact CRM</div>
-      <div class="panel-body">
-        <form action="/add" method="POST" class="d-grid gap-2">
-          {{ csrf_input() }}
-          <div class="row g-2">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Nom</label>
-              <input class="form-control" name="nom" placeholder="Ex: Marie Dupont" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Entreprise</label>
-              <input class="form-control" name="entreprise" placeholder="Ex: Atlas Conseil" required>
-            </div>
-            <div class="col-12">
-              <label class="form-label fw-semibold">Email</label>
-              <input class="form-control" name="email" placeholder="Ex: marie@email.com" type="email" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Telephone</label>
-              <input class="form-control" name="telephone" placeholder="Ex: +212 6 12 34 56 78">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Valeur potentielle</label>
-              <input class="form-control" name="valeur_potentielle" placeholder="Ex: 25000" type="number" min="0" step="0.01">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Statut</label>
-              <select class="form-control" name="statut">
-                {% for value, label in status_choices.items() %}
-                <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Source</label>
-              <select class="form-control" name="source">
-                {% for value, label in source_choices.items() %}
-                <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-12">
-              <label class="form-label fw-semibold">Prochaine action</label>
-              <input class="form-control" name="prochaine_action" placeholder="Ex: Appel de qualification mardi 10h">
-            </div>
-            <div class="col-12">
-              <label class="form-label fw-semibold">Notes</label>
-              <textarea class="form-control" name="notes" rows="4" placeholder="Contexte commercial, objections, besoins..."></textarea>
-            </div>
-          </div>
-          <button class="btn btn-brand" type="submit">Ajouter au CRM</button>
-        </form>
-      </div>
-    </section>
-    {% endif %}
-  </div>
-
-  <div class="col-xl-8">
+  <div class="col-12">
     <section class="panel mb-3">
       <div class="panel-head">Recherche et filtres</div>
       <div class="panel-body">
@@ -179,7 +135,13 @@
                   {% if can_manage_clients %}
                   <form action="/delete/{{ client.id }}" method="POST" class="m-0">
                     {{ csrf_input() }}
-                    <button class="btn btn-sm btn-outline-danger" type="submit">Supprimer</button>
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      type="submit"
+                      onclick='return confirm({{ ("Confirmer la suppression du client " ~ client.nom ~ " ?")|tojson }});'
+                    >
+                      Supprimer
+                    </button>
                   </form>
                   {% endif %}
                 </td>
@@ -204,4 +166,109 @@
     </section>
   </div>
 </div>
+
+{% if can_manage_clients %}
+<div class="modal fade" id="addClientModal" tabindex="-1" aria-labelledby="addClientModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="feature-form-kicker">Ajout rapide</div>
+          <h2 class="modal-title fs-4 mt-2" id="addClientModalLabel">Nouveau contact CRM</h2>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form action="/add" method="POST" class="feature-form" id="addClientForm">
+          {{ csrf_input() }}
+          <div class="feature-form-hero">
+            <h3 class="feature-form-title">Cree une fiche exploitable des le premier contact</h3>
+            <p class="feature-form-copy">Renseigne les informations essentielles, le contexte commercial et la prochaine action pour alimenter le pipeline sans repasser plus tard sur la fiche.</p>
+          </div>
+
+          <div class="form-section">
+            <h3 class="form-section-title">Identite du prospect</h3>
+            <p class="form-section-copy">Les informations de base visibles tout de suite dans la liste CRM.</p>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Nom</label>
+                <input class="form-control" name="nom" placeholder="Ex: Marie Dupont" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Entreprise</label>
+                <input class="form-control" name="entreprise" placeholder="Ex: Atlas Conseil" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Email</label>
+                <input class="form-control" name="email" placeholder="Ex: marie@email.com" type="email" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Telephone</label>
+                <input class="form-control" name="telephone" placeholder="Ex: +212 6 12 34 56 78">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3 class="form-section-title">Qualification commerciale</h3>
+            <p class="form-section-copy">Situe le contact dans le pipeline et estime son potentiel pour prioriser le suivi.</p>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Statut</label>
+                <select class="form-control" name="statut">
+                  {% for value, label in status_choices.items() %}
+                  <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Source</label>
+                <select class="form-control" name="source">
+                  {% for value, label in source_choices.items() %}
+                  <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Valeur potentielle</label>
+                <input class="form-control" name="valeur_potentielle" placeholder="Ex: 25000" type="number" min="0" step="0.01">
+              </div>
+            </div>
+            <div class="form-hint-grid mt-3">
+              <div class="form-hint">
+                <strong>Prospect froid</strong>
+                Utilise un statut initial et une prochaine action courte pour enclencher le suivi.
+              </div>
+              <div class="form-hint">
+                <strong>Lead chaud</strong>
+                Renseigne une valeur estimee pour faire remonter le dossier dans les priorites.
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3 class="form-section-title">Plan d'action</h3>
+            <p class="form-section-copy">Capture le prochain pas concret et le contexte utile pour l'equipe.</p>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Prochaine action</label>
+                <input class="form-control" name="prochaine_action" placeholder="Ex: Appel de qualification mardi 10h">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Notes</label>
+                <textarea class="form-control" name="notes" rows="5" placeholder="Contexte commercial, objections, besoins, niveau d'urgence..."></textarea>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <p class="form-actions-copy me-auto">La fiche sera ajoutee directement au pipeline et pourra ensuite etre enrichie avec des projets, interactions et documents.</p>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-brand" type="submit" form="addClientForm">Ajouter au CRM</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

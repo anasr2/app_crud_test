@@ -111,6 +111,34 @@ class ClientProject(db.Model):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    steps = db.relationship(
+        "ClientProjectStep",
+        backref="project",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ClientProjectStep.sort_order.asc(), ClientProjectStep.id.asc()",
+    )
+
+
+class ClientProjectStep(db.Model):
+    # Etapes operationnelles rattachees a un projet client.
+    __tablename__ = "client_project_steps"
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("client_projects.id"), nullable=False)
+    title = db.Column(db.String(160), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default="a_faire")
+    sort_order = db.Column(db.Integer, nullable=False, default=1)
+    due_date = db.Column(db.Date, nullable=True)
+    owner = db.Column(db.String(100), nullable=False, default="")
+    notes = db.Column(db.String(2000), nullable=False, default="")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
 class User(db.Model):

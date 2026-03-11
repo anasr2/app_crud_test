@@ -13,7 +13,7 @@ from markupsafe import Markup
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from models import Client, ClientDocument, ClientInteraction, ClientProject, User, db
+from models import Client, ClientDocument, ClientInteraction, ClientProject, ClientProjectStep, User, db
 
 
 def load_dotenv(dotenv_path=".env"):
@@ -173,6 +173,13 @@ PROJECT_PRIORITIES = {
     "moyenne": "Moyenne",
     "haute": "Haute",
     "critique": "Critique",
+}
+
+PROJECT_STEP_STATUSES = {
+    "a_faire": "A faire",
+    "en_cours": "En cours",
+    "terminee": "Terminee",
+    "bloquee": "Bloquee",
 }
 
 ALLOWED_DOCUMENT_EXTENSIONS = {
@@ -357,6 +364,54 @@ def build_client_context():
     }
 
 
+def build_project_context():
+    search = request.args.get("q", "").strip()
+    selected_status = request.args.get("status", "").strip()
+    selected_priority = request.args.get("priority", "").strip()
+
+    query = ClientProject.query.join(Client)
+
+    if search:
+        like_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                ClientProject.name.ilike(like_term),
+                ClientProject.owner.ilike(like_term),
+                Client.nom.ilike(like_term),
+                Client.entreprise.ilike(like_term),
+            )
+        )
+
+    if selected_status in PROJECT_STATUSES:
+        query = query.filter(ClientProject.status == selected_status)
+
+    if selected_priority in PROJECT_PRIORITIES:
+        query = query.filter(ClientProject.priority == selected_priority)
+
+    projects = query.order_by(ClientProject.updated_at.desc(), ClientProject.id.desc()).all()
+    all_projects = ClientProject.query.all()
+    all_steps = ClientProjectStep.query.all()
+
+    stats = {
+        "total": len(all_projects),
+        "in_progress": sum(project.status == "en_cours" for project in all_projects),
+        "done": sum(project.status == "termine" for project in all_projects),
+        "blocked": sum(project.status == "bloque" for project in all_projects),
+        "steps": len(all_steps),
+    }
+
+    return {
+        "projects": projects,
+        "stats": stats,
+        "search": search,
+        "selected_status": selected_status,
+        "selected_priority": selected_priority,
+        "project_status_choices": PROJECT_STATUSES,
+        "project_priority_choices": PROJECT_PRIORITIES,
+        "project_step_status_choices": PROJECT_STEP_STATUSES,
+    }
+
+
 def populate_client_from_form(client):
     client.nom = request.form.get("nom", "").strip()
     client.email = request.form.get("email", "").strip()
@@ -424,6 +479,42 @@ def populate_project_from_form(project):
     project.due_date = parse_date(request.form.get("due_date"))
     project.owner = request.form.get("owner", "").strip()
     project.description = request.form.get("description", "").strip()
+    project.updated_at = datetime.utcnow()
+
+
+def populate_project_step_from_form(step):
+    step.title = request.form.get("title", "").strip()
+    status = request.form.get("status", "a_faire").strip()
+    step.status = status if status in PROJECT_STEP_STATUSES else "a_faire"
+    step.sort_order = max(1, parse_int(request.form.get("sort_order"), 1))
+    step.due_date = parse_date(request.form.get("due_date"))
+    step.owner = request.form.get("owner", "").strip()
+    step.notes = request.form.get("notes", "").strip()
+    step.updated_at = datetime.utcnow()
+
+
+def sync_project_from_steps(project):
+    if not project.steps:
+        project.progress = 0
+        if project.status == "termine":
+            project.status = "planifie"
+        project.updated_at = datetime.utcnow()
+        return
+
+    total_steps = len(project.steps)
+    completed_steps = sum(step.status == "terminee" for step in project.steps)
+    in_progress_steps = sum(step.status == "en_cours" for step in project.steps)
+    blocked_steps = sum(step.status == "bloquee" for step in project.steps)
+
+    project.progress = round((completed_steps / total_steps) * 100)
+    if completed_steps == total_steps:
+        project.status = "termine"
+    elif blocked_steps and not in_progress_steps:
+        project.status = "bloque"
+    elif in_progress_steps or completed_steps:
+        project.status = "en_cours"
+    else:
+        project.status = "planifie"
     project.updated_at = datetime.utcnow()
 
 
@@ -550,6 +641,12 @@ def index():
     return render_template("index.html", **build_client_context())
 
 
+@app.route("/projects")
+@login_required
+def projects_index():
+    return render_template("projects.html", **build_project_context())
+
+
 @app.route("/add", methods=["POST"])
 @roles_required("administrateur", "commercial")
 def add_client():
@@ -571,6 +668,7 @@ def add_client():
 def delete_client(id):
     # Recherche le client par ID ou renvoie 404 s'il n'existe pas.
     client = Client.query.get_or_404(id)
+    client_name = client.nom
     file_paths = [document.file_path for document in client.documents]
 
     # Supprime le client puis valide la transaction.
@@ -585,6 +683,7 @@ def delete_client(id):
     if client_folder.exists() and not any(client_folder.iterdir()):
         client_folder.rmdir()
 
+    flash(f"Client supprime: {client_name}.", "success")
     return redirect("/")
 
 
@@ -601,6 +700,7 @@ def edit(id):
         interaction_types=INTERACTION_TYPES,
         project_status_choices=PROJECT_STATUSES,
         project_priority_choices=PROJECT_PRIORITIES,
+        project_step_status_choices=PROJECT_STEP_STATUSES,
     )
 
 
@@ -782,6 +882,7 @@ def update_client_project(client_id, project_id):
         return redirect(url_for("edit", id=client_id))
 
     populate_project_from_form(project)
+    sync_project_from_steps(project)
     create_interaction(
         client,
         "note",
@@ -790,6 +891,79 @@ def update_client_project(client_id, project_id):
     )
     db.session.commit()
     flash("Projet mis a jour.", "success")
+    return redirect(url_for("edit", id=client_id))
+
+
+@app.route("/clients/<int:client_id>/projects/<int:project_id>/steps/add", methods=["POST"])
+@roles_required("administrateur", "commercial")
+def add_project_step(client_id, project_id):
+    client = Client.query.get_or_404(client_id)
+    project = ClientProject.query.filter_by(id=project_id, client_id=client.id).first_or_404()
+    title = request.form.get("title", "").strip()
+
+    if not title:
+        flash("Le nom de l'etape est obligatoire.", "danger")
+        return redirect(url_for("edit", id=client_id))
+
+    step = ClientProjectStep(project=project)
+    populate_project_step_from_form(step)
+    db.session.add(step)
+    sync_project_from_steps(project)
+    create_interaction(
+        client,
+        "note",
+        "Etape projet ajoutee",
+        f"Projet {project.name}: nouvelle etape {step.title}",
+    )
+    db.session.commit()
+    flash(f"Etape ajoutee au projet {project.name}.", "success")
+    return redirect(url_for("edit", id=client_id))
+
+
+@app.route("/clients/<int:client_id>/projects/<int:project_id>/steps/<int:step_id>/update", methods=["POST"])
+@roles_required("administrateur", "commercial")
+def update_project_step(client_id, project_id, step_id):
+    client = Client.query.get_or_404(client_id)
+    project = ClientProject.query.filter_by(id=project_id, client_id=client.id).first_or_404()
+    step = ClientProjectStep.query.filter_by(id=step_id, project_id=project.id).first_or_404()
+    title = request.form.get("title", "").strip()
+
+    if not title:
+        flash("Le nom de l'etape est obligatoire.", "danger")
+        return redirect(url_for("edit", id=client_id))
+
+    populate_project_step_from_form(step)
+    sync_project_from_steps(project)
+    create_interaction(
+        client,
+        "note",
+        "Etape projet mise a jour",
+        f"Projet {project.name}: etape {step.title} ({PROJECT_STEP_STATUSES.get(step.status, step.status)})",
+    )
+    db.session.commit()
+    flash(f"Etape mise a jour: {step.title}.", "success")
+    return redirect(url_for("edit", id=client_id))
+
+
+@app.route("/clients/<int:client_id>/projects/<int:project_id>/steps/<int:step_id>/delete", methods=["POST"])
+@roles_required("administrateur", "commercial")
+def delete_project_step(client_id, project_id, step_id):
+    client = Client.query.get_or_404(client_id)
+    project = ClientProject.query.filter_by(id=project_id, client_id=client.id).first_or_404()
+    step = ClientProjectStep.query.filter_by(id=step_id, project_id=project.id).first_or_404()
+    step_title = step.title
+
+    db.session.delete(step)
+    db.session.flush()
+    sync_project_from_steps(project)
+    create_interaction(
+        client,
+        "note",
+        "Etape projet supprimee",
+        f"Projet {project.name}: etape retiree {step_title}",
+    )
+    db.session.commit()
+    flash(f"Etape supprimee: {step_title}.", "success")
     return redirect(url_for("edit", id=client_id))
 
 
@@ -826,11 +1000,14 @@ def add_user():
     try:
         email_sent, activation_link = send_invitation_email(new_user)
         if email_sent:
-            flash("Invitation envoyee par email.", "success")
+            flash(f"Utilisateur cree: {new_user.username}. Invitation envoyee par email.", "success")
         else:
-            flash(f"SMTP non configure. Lien d'activation: {activation_link}", "warning")
+            flash(
+                f"Utilisateur cree: {new_user.username}. SMTP non configure. Lien d'activation: {activation_link}",
+                "warning",
+            )
     except Exception:
-        flash("Utilisateur cree, mais l'envoi de l'email a echoue.", "warning")
+        flash(f"Utilisateur cree: {new_user.username}, mais l'envoi de l'email a echoue.", "warning")
 
     return redirect("/users")
 
@@ -840,11 +1017,13 @@ def add_user():
 def delete_user(id):
     # Recherche l'utilisateur par ID ou renvoie 404.
     user = User.query.get_or_404(id)
+    username = user.username
 
     # Suppression definitive de l'utilisateur.
     db.session.delete(user)
     db.session.commit()
 
+    flash(f"Utilisateur supprime: {username}.", "success")
     return redirect("/users")
 
 
@@ -891,6 +1070,7 @@ def update_user(id):
 
     db.session.commit()
 
+    flash(f"Utilisateur mis a jour: {user.username}.", "success")
     return redirect("/users")
 
 

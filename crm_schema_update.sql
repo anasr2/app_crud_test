@@ -8,6 +8,7 @@
   - Initialisation des horodatages existants
   - Creation des tables dbo.client_documents et dbo.client_interactions
   - Creation de la table dbo.client_projects
+  - Creation de la table dbo.client_project_steps
   - Ajout de la colonne role sur dbo.users
   - Ajout des colonnes d'invitation et de verification email sur dbo.users
 */
@@ -223,6 +224,23 @@ BEGIN
         created_at DATETIME NOT NULL CONSTRAINT DF_client_projects_created_at DEFAULT GETDATE(),
         updated_at DATETIME NOT NULL CONSTRAINT DF_client_projects_updated_at DEFAULT GETDATE(),
         CONSTRAINT FK_client_projects_clients FOREIGN KEY (client_id) REFERENCES dbo.clients(id) ON DELETE CASCADE
+    );
+END;
+
+IF OBJECT_ID(N'dbo.client_project_steps', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.client_project_steps (
+        id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        project_id INT NOT NULL,
+        title VARCHAR(160) NOT NULL,
+        status VARCHAR(30) NOT NULL CONSTRAINT DF_client_project_steps_status DEFAULT 'a_faire',
+        sort_order INT NOT NULL CONSTRAINT DF_client_project_steps_sort_order DEFAULT 1,
+        due_date DATE NULL,
+        owner VARCHAR(100) NOT NULL CONSTRAINT DF_client_project_steps_owner DEFAULT '',
+        notes VARCHAR(2000) NOT NULL CONSTRAINT DF_client_project_steps_notes DEFAULT '',
+        created_at DATETIME NOT NULL CONSTRAINT DF_client_project_steps_created_at DEFAULT GETDATE(),
+        updated_at DATETIME NOT NULL CONSTRAINT DF_client_project_steps_updated_at DEFAULT GETDATE(),
+        CONSTRAINT FK_client_project_steps_projects FOREIGN KEY (project_id) REFERENCES dbo.client_projects(id) ON DELETE CASCADE
     );
 END;
 
