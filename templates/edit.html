@@ -8,7 +8,9 @@
     <section class="panel">
       <div class="panel-head d-flex justify-content-between align-items-center">
         <span>Fiche client #{{ client.id }}</span>
+        {% if can_manage_clients %}
         <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#clientModal">Modifier la fiche</button>
+        {% endif %}
       </div>
       <div class="panel-body">
         <div class="row g-2">
@@ -45,7 +47,9 @@
     <section class="panel mt-3">
       <div class="panel-head d-flex justify-content-between align-items-center">
         <span>Projets du client</span>
+        {% if can_manage_clients %}
         <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addProjectModal">Nouveau projet</button>
+        {% endif %}
       </div>
       <div class="panel-body">
         {% if client.projects %}
@@ -72,7 +76,9 @@
                 <div class="mt-2">{{ project.description }}</div>
                 {% endif %}
               </div>
+              {% if can_manage_clients %}
               <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#projectModal{{ project.id }}">Mettre a jour</button>
+              {% endif %}
             </div>
           </article>
           {% endfor %}
@@ -86,7 +92,9 @@
     <section class="panel mt-3">
       <div class="panel-head d-flex justify-content-between align-items-center">
         <span>Historique de la relation</span>
+        {% if can_manage_clients %}
         <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addInteractionModal">Nouvelle interaction</button>
+        {% endif %}
       </div>
       <div class="panel-body">
         {% if client.interactions %}
@@ -106,7 +114,9 @@
               </div>
               <div class="text-end">
                 <div class="text-muted small text-nowrap mb-2">{{ interaction.created_at.strftime("%d/%m/%Y %H:%M") }}</div>
+                {% if can_manage_clients %}
                 <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#interactionModal{{ interaction.id }}">Mettre a jour</button>
+                {% endif %}
               </div>
             </div>
           </article>
@@ -123,7 +133,9 @@
     <section class="panel">
       <div class="panel-head d-flex justify-content-between align-items-center">
         <span>Documents client</span>
+        {% if can_manage_clients %}
         <button class="btn btn-sm btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Nouveau document</button>
+        {% endif %}
       </div>
       <div class="panel-body">
         {% if client.documents %}
@@ -142,7 +154,9 @@
               </div>
               <div class="d-grid gap-2">
                 <a class="btn btn-sm btn-outline-primary" href="/clients/{{ client.id }}/documents/{{ document.id }}">Telecharger</a>
+                {% if can_manage_clients %}
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#documentModal{{ document.id }}">Mettre a jour</button>
+                {% endif %}
               </div>
             </div>
           </article>
@@ -156,10 +170,12 @@
   </div>
 </div>
 
+{% if can_manage_clients %}
 <div class="modal fade" id="clientModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/update/{{ client.id }}" method="POST">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Modifier la fiche client</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -225,6 +241,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/clients/{{ client.id }}/projects/add" method="POST">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Ajouter un projet</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -286,6 +303,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/clients/{{ client.id }}/history/add" method="POST">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Ajouter une interaction</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -323,6 +341,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/clients/{{ client.id }}/documents/add" method="POST" enctype="multipart/form-data">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Ajouter un document</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -354,6 +373,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/clients/{{ client.id }}/projects/{{ project.id }}/update" method="POST">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Mettre a jour le projet</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -417,6 +437,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/clients/{{ client.id }}/history/{{ interaction.id }}/update" method="POST">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Mettre a jour l'interaction</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -456,6 +477,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <form action="/clients/{{ client.id }}/documents/{{ document.id }}/update" method="POST" enctype="multipart/form-data">
+        {{ csrf_input() }}
         <div class="modal-header">
           <h5 class="modal-title">Mettre a jour le document</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -486,4 +508,5 @@
   </div>
 </div>
 {% endfor %}
+{% endif %}
 {% endblock %}

@@ -1,14 +1,35 @@
 import os
+import smtplib
 import uuid
+import secrets
 from datetime import datetime
+from email.message import EmailMessage
 from functools import wraps
 from pathlib import Path
 
 from sqlalchemy import inspect, or_, text
 from flask import Flask, flash, redirect, render_template, request, send_from_directory, session, url_for
+from markupsafe import Markup
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from models import Client, ClientDocument, ClientInteraction, ClientProject, User, db
+
+
+def load_dotenv(dotenv_path=".env"):
+    env_file = Path(dotenv_path)
+    if not env_file.exists():
+        return
+
+    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_dotenv()
 
 # Creation de l'application Flask.
 app = Flask(__name__)
@@ -25,6 +46,11 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 app.config["UPLOAD_FOLDER"] = os.path.join(app.instance_path, "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_SECURE_COOKIE", "0") == "1"
+app.config["INVITATION_EXPIRY_HOURS"] = int(os.getenv("INVITATION_EXPIRY_HOURS", "72"))
+app.config["MAIL_USE_TLS"] = True
 
 
 # Decorateur de protection: force la connexion avant d'acceder aux pages privees.
@@ -39,9 +65,68 @@ def login_required(view_func):
     return wrapped_view
 
 
+def roles_required(*allowed_roles):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(*args, **kwargs):
+            if not session.get("user_id"):
+                return redirect(url_for("login", next=request.path))
+            if session.get("role") not in allowed_roles:
+                flash("Acces refuse pour ce profil.", "danger")
+                return redirect(url_for("index"))
+            return view_func(*args, **kwargs)
+
+        return wrapped_view
+
+    return decorator
+
+
 # Verifie que l'URL de redirection reste interne a l'application.
 def is_safe_next_url(target):
     return bool(target) and target.startswith("/") and not target.startswith("//")
+
+
+def is_password_hashed(value):
+    return bool(value) and value.startswith(("scrypt:", "pbkdf2:"))
+
+
+def hash_password(password):
+    return generate_password_hash(password)
+
+
+def build_external_url(path):
+    base_url = os.getenv("APP_BASE_URL", "").rstrip("/")
+    if base_url:
+        return f"{base_url}{path}"
+    return path
+
+
+def generate_invitation_token():
+    return secrets.token_urlsafe(48)
+
+
+def create_pending_password():
+    return hash_password(secrets.token_urlsafe(32))
+
+
+def verify_password(stored_password, plain_password):
+    if not stored_password:
+        return False
+    if is_password_hashed(stored_password):
+        return check_password_hash(stored_password, plain_password)
+    return stored_password == plain_password
+
+
+def get_csrf_token():
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+def csrf_input():
+    return Markup(f'<input type="hidden" name="csrf_token" value="{get_csrf_token()}">')
 
 
 CLIENT_STATUSES = {
@@ -50,6 +135,12 @@ CLIENT_STATUSES = {
     "negociation": "Negociation",
     "client": "Client",
     "perdu": "Perdu",
+}
+
+USER_ROLES = {
+    "administrateur": "Administrateur",
+    "commercial": "Commercial",
+    "consultant": "Consultant",
 }
 
 LEAD_SOURCES = {
@@ -122,6 +213,96 @@ def ensure_client_schema():
         if "updated_at" not in existing_columns:
             connection.execute(text("ALTER TABLE clients ADD updated_at DATETIME NULL"))
             connection.execute(text("UPDATE clients SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"))
+
+
+def ensure_user_schema():
+    inspector = inspect(db.engine)
+    existing_columns = {column["name"] for column in inspector.get_columns("users")}
+    with db.engine.begin() as connection:
+        if "role" not in existing_columns:
+            connection.execute(
+                text("ALTER TABLE users ADD role VARCHAR(30) NOT NULL DEFAULT 'administrateur'")
+            )
+        if "invitation_token" not in existing_columns:
+            connection.execute(text("ALTER TABLE users ADD invitation_token VARCHAR(255) NULL"))
+        if "invitation_sent_at" not in existing_columns:
+            connection.execute(text("ALTER TABLE users ADD invitation_sent_at DATETIME NULL"))
+        if "email_verified_at" not in existing_columns:
+            connection.execute(text("ALTER TABLE users ADD email_verified_at DATETIME NULL"))
+            connection.execute(text("UPDATE users SET email_verified_at = CURRENT_TIMESTAMP WHERE email_verified_at IS NULL"))
+
+
+@app.context_processor
+def inject_template_helpers():
+    current_role = session.get("role", "")
+    return {
+        "csrf_input": csrf_input,
+        "current_role": current_role,
+        "role_labels": USER_ROLES,
+        "can_manage_clients": current_role in {"administrateur", "commercial"},
+        "is_admin": current_role == "administrateur",
+    }
+
+
+@app.before_request
+def protect_from_csrf():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+
+    expected_token = session.get("_csrf_token")
+    received_token = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
+    if not expected_token or not received_token or expected_token != received_token:
+        flash("Session invalide ou formulaire expire. Reessaie.", "danger")
+        return redirect(request.referrer or url_for("login"))
+    return None
+
+
+def invitation_is_expired(user):
+    if not user.invitation_sent_at:
+        return True
+    age = datetime.utcnow() - user.invitation_sent_at
+    return age.total_seconds() > app.config["INVITATION_EXPIRY_HOURS"] * 3600
+
+
+def send_invitation_email(user):
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USERNAME", "").strip()
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user or "noreply@example.com")
+    use_tls = os.getenv("SMTP_USE_TLS", "1") == "1"
+
+    activation_path = url_for("activate_account", token=user.invitation_token)
+    activation_link = build_external_url(activation_path)
+
+    if not smtp_host:
+        return False, activation_link
+
+    message = EmailMessage()
+    message["Subject"] = "Activation de votre compte CRM"
+    message["From"] = smtp_from
+    message["To"] = user.email
+    message.set_content(
+        "\n".join(
+            [
+                f"Bonjour {user.username},",
+                "",
+                "Votre compte CRM a ete cree.",
+                "Cliquez sur le lien suivant pour verifier votre email et definir votre mot de passe :",
+                activation_link,
+                "",
+                f"Ce lien expire dans {app.config['INVITATION_EXPIRY_HOURS']} heures.",
+            ]
+        )
+    )
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+        if use_tls:
+            server.starttls()
+        if smtp_user:
+            server.login(smtp_user, smtp_password)
+        server.send_message(message)
+    return True, activation_link
 
 
 def allowed_document(filename):
@@ -256,7 +437,9 @@ def ensure_default_admin():
         admin = User(
             username=default_username,
             email=default_email,
-            password=default_password,
+            role="administrateur",
+            password=hash_password(default_password),
+            email_verified_at=datetime.utcnow(),
         )
         db.session.add(admin)
         db.session.commit()
@@ -271,6 +454,7 @@ with app.app_context():
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     db.create_all()
     ensure_client_schema()
+    ensure_user_schema()
     ensure_default_admin()
 
 
@@ -289,14 +473,22 @@ def login():
         password = request.form.get("password", "")
         next_url = request.form.get("next_url", "")
 
-        # Recherche d'un utilisateur correspondant (version actuelle: mot de passe en clair).
-        user = User.query.filter_by(username=username, password=password).first()
+        # Recherche d'un utilisateur par username ou email.
+        user = User.query.filter(
+            or_(User.username == username, User.email == username)
+        ).first()
 
-        if user:
+        if user and not user.email_verified_at:
+            flash("Compte non active. Verifie ton email pour definir ton mot de passe.", "warning")
+        elif user and verify_password(user.password, password):
             # Reinitialise la session puis stocke les infos utiles.
+            if not is_password_hashed(user.password):
+                user.password = hash_password(password)
+                db.session.commit()
             session.clear()
             session["user_id"] = user.id
             session["username"] = user.username
+            session["role"] = user.role
             flash("Connexion reussie.", "success")
 
             # Redirection vers la page demandee si elle est sure.
@@ -308,6 +500,39 @@ def login():
         flash("Identifiants invalides.", "danger")
 
     return render_template("login.html", next_url=next_url)
+
+
+@app.route("/activate-account/<token>", methods=["GET", "POST"])
+def activate_account(token):
+    user = User.query.filter_by(invitation_token=token).first()
+    if not user:
+        flash("Lien d'activation invalide.", "danger")
+        return redirect(url_for("login"))
+
+    if user.email_verified_at:
+        flash("Compte deja active. Connecte-toi.", "info")
+        return redirect(url_for("login"))
+
+    if invitation_is_expired(user):
+        flash("Lien d'activation expire. Demande une nouvelle invitation.", "danger")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        if len(password) < 8:
+            flash("Le mot de passe doit contenir au moins 8 caracteres.", "danger")
+        elif password != confirm_password:
+            flash("Les mots de passe ne correspondent pas.", "danger")
+        else:
+            user.password = hash_password(password)
+            user.email_verified_at = datetime.utcnow()
+            user.invitation_token = None
+            db.session.commit()
+            flash("Compte active. Tu peux maintenant te connecter.", "success")
+            return redirect(url_for("login"))
+
+    return render_template("activate_account.html", user=user, token=token)
 
 
 @app.route("/logout", methods=["POST"])
@@ -326,7 +551,7 @@ def index():
 
 
 @app.route("/add", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def add_client():
     # Construit puis persiste un nouveau contact CRM.
     new_client = Client()
@@ -341,8 +566,8 @@ def add_client():
     return redirect("/")
 
 
-@app.route("/delete/<int:id>")
-@login_required
+@app.route("/delete/<int:id>", methods=["POST"])
+@roles_required("administrateur", "commercial")
 def delete_client(id):
     # Recherche le client par ID ou renvoie 404 s'il n'existe pas.
     client = Client.query.get_or_404(id)
@@ -380,7 +605,7 @@ def edit(id):
 
 
 @app.route("/update/<int:id>", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def update_client(id):
     # Recherche du client cible.
     client = Client.query.get_or_404(id)
@@ -396,7 +621,7 @@ def update_client(id):
 
 
 @app.route("/clients/<int:id>/documents/add", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def add_client_document(id):
     client = Client.query.get_or_404(id)
     uploaded_file = request.files.get("document")
@@ -437,7 +662,7 @@ def add_client_document(id):
 
 
 @app.route("/clients/<int:client_id>/documents/<int:document_id>/update", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def update_client_document(client_id, document_id):
     client = Client.query.get_or_404(client_id)
     document = ClientDocument.query.filter_by(id=document_id, client_id=client.id).first_or_404()
@@ -473,7 +698,7 @@ def update_client_document(client_id, document_id):
 
 
 @app.route("/clients/<int:id>/history/add", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def add_client_history(id):
     client = Client.query.get_or_404(id)
     interaction_type = request.form.get("interaction_type", "note")
@@ -491,7 +716,7 @@ def add_client_history(id):
 
 
 @app.route("/clients/<int:client_id>/history/<int:interaction_id>/update", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def update_client_history(client_id, interaction_id):
     client = Client.query.get_or_404(client_id)
     interaction = ClientInteraction.query.filter_by(id=interaction_id, client_id=client.id).first_or_404()
@@ -522,7 +747,7 @@ def download_client_document(client_id, document_id):
 
 
 @app.route("/clients/<int:id>/projects/add", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def add_client_project(id):
     client = Client.query.get_or_404(id)
     project_name = request.form.get("name", "").strip()
@@ -546,7 +771,7 @@ def add_client_project(id):
 
 
 @app.route("/clients/<int:client_id>/projects/<int:project_id>/update", methods=["POST"])
-@login_required
+@roles_required("administrateur", "commercial")
 def update_client_project(client_id, project_id):
     client = Client.query.get_or_404(client_id)
     project = ClientProject.query.filter_by(id=project_id, client_id=client.id).first_or_404()
@@ -569,32 +794,49 @@ def update_client_project(client_id, project_id):
 
 
 @app.route("/users")
-@login_required
+@roles_required("administrateur")
 def users_index():
     # Affiche la liste des utilisateurs.
     users = User.query.all()
-    return render_template("users.html", users=users)
+    return render_template("users.html", users=users, user_roles=USER_ROLES)
 
 
 @app.route("/users/add", methods=["POST"])
-@login_required
+@roles_required("administrateur")
 def add_user():
     # Recupere les donnees du formulaire utilisateur.
     username = request.form["username"]
     email = request.form["email"]
-    password = request.form["password"]
+    role = request.form.get("role", "consultant").strip()
+    invitation_token = generate_invitation_token()
 
-    # Cree puis enregistre un nouvel utilisateur.
-    new_user = User(username=username, email=email, password=password)
+    # Cree puis enregistre un nouvel utilisateur en attente d'activation.
+    new_user = User(
+        username=username,
+        email=email,
+        role=role if role in USER_ROLES else "consultant",
+        password=create_pending_password(),
+        invitation_token=invitation_token,
+        invitation_sent_at=datetime.utcnow(),
+        email_verified_at=None,
+    )
 
     db.session.add(new_user)
     db.session.commit()
+    try:
+        email_sent, activation_link = send_invitation_email(new_user)
+        if email_sent:
+            flash("Invitation envoyee par email.", "success")
+        else:
+            flash(f"SMTP non configure. Lien d'activation: {activation_link}", "warning")
+    except Exception:
+        flash("Utilisateur cree, mais l'envoi de l'email a echoue.", "warning")
 
     return redirect("/users")
 
 
-@app.route("/users/delete/<int:id>")
-@login_required
+@app.route("/users/delete/<int:id>", methods=["POST"])
+@roles_required("administrateur")
 def delete_user(id):
     # Recherche l'utilisateur par ID ou renvoie 404.
     user = User.query.get_or_404(id)
@@ -607,15 +849,36 @@ def delete_user(id):
 
 
 @app.route("/users/edit/<int:id>")
-@login_required
+@roles_required("administrateur")
 def edit_user(id):
     # Charge l'utilisateur et affiche la page d'edition.
     user = User.query.get_or_404(id)
-    return render_template("edit_user.html", user=user)
+    return render_template("edit_user.html", user=user, user_roles=USER_ROLES)
+
+
+@app.route("/users/<int:id>/resend-invite", methods=["POST"])
+@roles_required("administrateur")
+def resend_user_invite(id):
+    user = User.query.get_or_404(id)
+    user.invitation_token = generate_invitation_token()
+    user.invitation_sent_at = datetime.utcnow()
+    user.email_verified_at = None
+    user.password = create_pending_password()
+    db.session.commit()
+
+    try:
+        email_sent, activation_link = send_invitation_email(user)
+        if email_sent:
+            flash("Invitation renvoyee.", "success")
+        else:
+            flash(f"SMTP non configure. Lien d'activation: {activation_link}", "warning")
+    except Exception:
+        flash("Invitation regeneree, mais l'envoi de l'email a echoue.", "warning")
+    return redirect("/users")
 
 
 @app.route("/users/update/<int:id>", methods=["POST"])
-@login_required
+@roles_required("administrateur")
 def update_user(id):
     # Recherche de l'utilisateur cible.
     user = User.query.get_or_404(id)
@@ -623,7 +886,8 @@ def update_user(id):
     # Applique les nouvelles valeurs issues du formulaire.
     user.username = request.form["username"]
     user.email = request.form["email"]
-    user.password = request.form["password"]
+    role = request.form.get("role", user.role).strip()
+    user.role = role if role in USER_ROLES else user.role
 
     db.session.commit()
 

@@ -123,5 +123,13 @@ class User(db.Model):
     username = db.Column(db.String(100), nullable=False, unique=True)
     # Email unique de l'utilisateur.
     email = db.Column(db.String(100), nullable=False, unique=True)
-    # Mot de passe (actuellement stocke en clair, a hasher en production).
+    # Role metier de l'utilisateur dans l'application.
+    role = db.Column(db.String(30), nullable=False, default="administrateur")
+    # Mot de passe hashé.
     password = db.Column(db.String(255), nullable=False)
+    # Jeton d'invitation pour l'activation initiale du compte.
+    invitation_token = db.Column(db.String(255), nullable=True, unique=True)
+    # Date d'envoi de l'invitation.
+    invitation_sent_at = db.Column(db.DateTime, nullable=True)
+    # Date de verification de l'adresse email.
+    email_verified_at = db.Column(db.DateTime, nullable=True)

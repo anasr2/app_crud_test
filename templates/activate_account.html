@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Activation Du Compte | Web CRM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-5">
+    <section class="panel">
+      <div class="panel-head">Activation du compte</div>
+      <div class="panel-body">
+        <div class="mb-3">
+          <div class="fw-semibold">{{ user.username }}</div>
+          <div class="text-muted small">{{ user.email }}</div>
+        </div>
+        <form method="POST" action="/activate-account/{{ token }}" class="d-grid gap-3">
+          {{ csrf_input() }}
+          <div>
+            <label class="form-label fw-semibold">Nouveau mot de passe</label>
+            <input class="form-control" type="password" name="password" minlength="8" required>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Confirmer le mot de passe</label>
+            <input class="form-control" type="password" name="confirm_password" minlength="8" required>
+          </div>
+          <button type="submit" class="btn btn-brand">Activer mon compte</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -9,6 +9,7 @@
       <div class="panel-head">Nouvel utilisateur</div>
       <div class="panel-body">
         <form action="/users/add" method="POST" class="d-grid gap-3">
+          {{ csrf_input() }}
           <div>
             <label class="form-label fw-semibold">Nom d'utilisateur</label>
             <input class="form-control" name="username" placeholder="Ex: admin" required>
@@ -18,10 +19,15 @@
             <input class="form-control" name="email" placeholder="Ex: admin@email.com" type="email" required>
           </div>
           <div>
-            <label class="form-label fw-semibold">Mot de passe</label>
-            <input class="form-control" name="password" placeholder="Mot de passe" type="password" required>
+            <label class="form-label fw-semibold">Profil</label>
+            <select class="form-control" name="role" required>
+              {% for value, label in user_roles.items() %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
           </div>
-          <button class="btn btn-brand" type="submit">Ajouter l'utilisateur</button>
+          <div class="form-text">Un email d'activation sera envoye pour verifier l'adresse et definir le mot de passe.</div>
+          <button class="btn btn-brand" type="submit">Inviter l'utilisateur</button>
         </form>
       </div>
     </section>
@@ -42,7 +48,9 @@
                 <th style="width: 80px;">ID</th>
                 <th>Nom d'utilisateur</th>
                 <th>Email</th>
-                <th style="width: 220px;">Actions</th>
+                <th>Profil</th>
+                <th>Activation</th>
+                <th style="width: 320px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -51,9 +59,26 @@
                 <td>{{ user.id }}</td>
                 <td class="fw-semibold">{{ user.username }}</td>
                 <td>{{ user.email }}</td>
+                <td>{{ user_roles.get(user.role, user.role) }}</td>
+                <td>
+                  {% if user.email_verified_at %}
+                  <span class="badge text-bg-success">Active</span>
+                  {% else %}
+                  <span class="badge text-bg-warning">En attente</span>
+                  {% endif %}
+                </td>
                 <td class="d-flex gap-2">
                   <a class="btn btn-sm btn-outline-primary" href="/users/edit/{{ user.id }}">Modifier</a>
-                  <a class="btn btn-sm btn-outline-danger" href="/users/delete/{{ user.id }}">Supprimer</a>
+                  {% if not user.email_verified_at %}
+                  <form action="/users/{{ user.id }}/resend-invite" method="POST" class="m-0">
+                    {{ csrf_input() }}
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Renvoyer l'invitation</button>
+                  </form>
+                  {% endif %}
+                  <form action="/users/delete/{{ user.id }}" method="POST" class="m-0">
+                    {{ csrf_input() }}
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Supprimer</button>
+                  </form>
                 </td>
               </tr>
               {% endfor %}

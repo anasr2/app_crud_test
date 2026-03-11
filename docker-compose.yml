@@ -8,6 +8,14 @@ services:
       DATABASE_URL: sqlite:////app/data/app.db
       FLASK_DEBUG: "0"
       PORT: "5000"
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5000}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-1}
+      INVITATION_EXPIRY_HOURS: ${INVITATION_EXPIRY_HOURS:-72}
     volumes:
       - ./data:/app/data
     restart: unless-stopped

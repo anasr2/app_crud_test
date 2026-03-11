@@ -8,6 +8,8 @@
   - Initialisation des horodatages existants
   - Creation des tables dbo.client_documents et dbo.client_interactions
   - Creation de la table dbo.client_projects
+  - Ajout de la colonne role sur dbo.users
+  - Ajout des colonnes d'invitation et de verification email sur dbo.users
 */
 
 BEGIN TRANSACTION;
@@ -17,6 +19,42 @@ BEGIN
     RAISERROR('La table dbo.clients est introuvable.', 16, 1);
     ROLLBACK TRANSACTION;
     RETURN;
+END;
+
+IF OBJECT_ID(N'dbo.users', N'U') IS NULL
+BEGIN
+    RAISERROR('La table dbo.users est introuvable.', 16, 1);
+    ROLLBACK TRANSACTION;
+    RETURN;
+END;
+
+IF COL_LENGTH('dbo.users', 'role') IS NULL
+BEGIN
+    ALTER TABLE dbo.users
+    ADD role VARCHAR(30) NOT NULL
+        CONSTRAINT DF_users_role DEFAULT 'administrateur';
+END;
+
+IF COL_LENGTH('dbo.users', 'invitation_token') IS NULL
+BEGIN
+    ALTER TABLE dbo.users
+    ADD invitation_token VARCHAR(255) NULL;
+END;
+
+IF COL_LENGTH('dbo.users', 'invitation_sent_at') IS NULL
+BEGIN
+    ALTER TABLE dbo.users
+    ADD invitation_sent_at DATETIME NULL;
+END;
+
+IF COL_LENGTH('dbo.users', 'email_verified_at') IS NULL
+BEGIN
+    ALTER TABLE dbo.users
+    ADD email_verified_at DATETIME NULL;
+
+    UPDATE dbo.users
+    SET email_verified_at = GETDATE()
+    WHERE email_verified_at IS NULL;
 END;
 
 IF COL_LENGTH('dbo.clients', 'entreprise') IS NULL
