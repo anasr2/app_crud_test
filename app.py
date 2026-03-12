@@ -8,6 +8,7 @@ from functools import wraps
 from pathlib import Path
 
 from sqlalchemy import inspect, or_, text
+from sqlalchemy.exc import IntegrityError
 from flask import Flask, flash, redirect, render_template, request, send_from_directory, session, url_for
 from markupsafe import Markup
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -532,20 +533,28 @@ def sync_project_from_steps(project):
 
 # Cree un compte admin par defaut uniquement si la table users est vide.
 def ensure_default_admin():
-    if User.query.count() == 0:
-        default_username = os.getenv("DEFAULT_ADMIN_USERNAME", "admin")
-        default_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@local.dev")
-        default_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
+    default_username = os.getenv("DEFAULT_ADMIN_USERNAME", "admin")
+    default_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@local.dev")
+    default_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
 
-        admin = User(
-            username=default_username,
-            email=default_email,
-            role="administrateur",
-            password=hash_password(default_password),
-            email_verified_at=datetime.utcnow(),
-        )
-        db.session.add(admin)
+    existing_admin = User.query.filter(
+        or_(User.username == default_username, User.email == default_email)
+    ).first()
+    if existing_admin:
+        return
+
+    admin = User(
+        username=default_username,
+        email=default_email,
+        role="administrateur",
+        password=hash_password(default_password),
+        email_verified_at=datetime.utcnow(),
+    )
+    db.session.add(admin)
+    try:
         db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
 
 
 # Lie SQLAlchemy a l'application Flask.
