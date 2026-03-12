@@ -35,13 +35,13 @@
 
   <div class="col-lg-8">
     <section class="panel">
-      <div class="panel-head d-flex justify-content-between align-items-center">
+      <div class="panel-head panel-head-wrap">
         <span>Liste des utilisateurs</span>
         <span class="badge text-bg-light border">{{ users|length }} total</span>
       </div>
       <div class="panel-body p-0">
         {% if users %}
-        <div class="table-responsive">
+        <div class="table-responsive desktop-only">
           <table class="table table-hover align-middle">
             <thead>
               <tr>
@@ -67,7 +67,8 @@
                   <span class="badge text-bg-warning">En attente</span>
                   {% endif %}
                 </td>
-                <td class="d-flex gap-2">
+                <td>
+                  <div class="action-group">
                   <a class="btn btn-sm btn-outline-primary" href="/users/edit/{{ user.id }}">Modifier</a>
                   {% if not user.email_verified_at %}
                   <form action="/users/{{ user.id }}/resend-invite" method="POST" class="m-0">
@@ -85,11 +86,62 @@
                       Supprimer
                     </button>
                   </form>
+                  </div>
                 </td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
+        </div>
+        <div class="mobile-only mobile-card-list">
+          {% for user in users %}
+          <article class="mobile-card">
+            <div class="stack-mobile">
+              <div>
+                <div class="mobile-card-title">{{ user.username }}</div>
+                <div class="mobile-card-subtitle">{{ user.email }}</div>
+              </div>
+              <div>
+                {% if user.email_verified_at %}
+                <span class="badge text-bg-success">Active</span>
+                {% else %}
+                <span class="badge text-bg-warning">En attente</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="detail-list">
+              <div class="detail-row">
+                <div class="detail-label">Identifiant</div>
+                <div class="detail-value">#{{ user.id }}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Profil</div>
+                <div class="detail-value">{{ user_roles.get(user.role, user.role) }}</div>
+              </div>
+            </div>
+
+            <div class="action-group mt-3">
+              <a class="btn btn-sm btn-outline-primary" href="/users/edit/{{ user.id }}">Modifier</a>
+              {% if not user.email_verified_at %}
+              <form action="/users/{{ user.id }}/resend-invite" method="POST" class="m-0">
+                {{ csrf_input() }}
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Renvoyer l'invitation</button>
+              </form>
+              {% endif %}
+              <form action="/users/delete/{{ user.id }}" method="POST" class="m-0">
+                {{ csrf_input() }}
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  type="submit"
+                  onclick='return confirm({{ ("Confirmer la suppression de l utilisateur " ~ user.username ~ " ?")|tojson }});'
+                >
+                  Supprimer
+                </button>
+              </form>
+            </div>
+          </article>
+          {% endfor %}
         </div>
         {% else %}
         <div class="p-3">

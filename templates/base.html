@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f4c81">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Web CRM">
   <title>{% block title %}Gestion CRM{% endblock %}</title>
+  <link rel="manifest" href="{{ url_for('manifest') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icons/icon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon.svg') }}">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -111,6 +118,14 @@
       background: var(--surface-soft);
       font-weight: 700;
       line-height: 1.2;
+    }
+
+    .panel-head-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
     .panel-body {
@@ -359,18 +374,107 @@
       line-height: 1.25;
     }
 
+    .action-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .mobile-only {
+      display: none;
+    }
+
+    .mobile-card-list {
+      display: grid;
+      gap: 0.85rem;
+      padding: 0.9rem;
+    }
+
+    .mobile-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 0.9rem;
+      background: linear-gradient(180deg, #ffffff, #fbfdff);
+      box-shadow: 0 8px 24px rgba(15, 76, 129, 0.06);
+    }
+
+    .mobile-card-title {
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 0.15rem;
+    }
+
+    .mobile-card-subtitle {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.3;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 0.55rem;
+      margin-top: 0.8rem;
+    }
+
+    .detail-row {
+      display: grid;
+      gap: 0.15rem;
+    }
+
+    .detail-label {
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      line-height: 1.15;
+    }
+
+    .detail-value {
+      line-height: 1.35;
+    }
+
+    .stack-mobile {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
     .form-text,
     .small {
       line-height: 1.25;
     }
 
     @media (max-width: 768px) {
+      body {
+        font-size: 0.95rem;
+      }
+
+      .container {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+      }
+
       .page-shell {
         padding-top: 0.85rem;
       }
 
+      .page-header {
+        padding: 0.9rem 0.95rem;
+      }
+
       .page-title {
         font-size: 1.15rem;
+      }
+
+      .page-subtitle {
+        font-size: 0.92rem;
+      }
+
+      .panel-head,
+      .panel-body {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
       }
 
       .form-hint-grid {
@@ -381,8 +485,43 @@
         align-items: stretch;
       }
 
+      .action-group,
+      .stack-mobile,
+      .panel-head-wrap {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
       .form-actions .btn {
         width: 100%;
+      }
+
+      .action-group .btn,
+      .action-group form,
+      .action-group form .btn,
+      .stack-mobile .btn {
+        width: 100%;
+      }
+
+      .desktop-only {
+        display: none !important;
+      }
+
+      .mobile-only {
+        display: block;
+      }
+
+      .navbar-nav .nav-item.text-muted {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+
+      .table-responsive {
+        border: 0;
+      }
+
+      .modal-dialog {
+        margin: 0.5rem;
       }
     }
   </style>
@@ -450,5 +589,12 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/service-worker.js");
+      });
+    }
+  </script>
 </body>
 </html>

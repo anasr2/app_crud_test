@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Hors ligne | Web CRM{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-body">
+    <div class="feature-form-hero">
+      <div class="feature-form-kicker">Mode hors ligne</div>
+      <h1 class="feature-form-title">Connexion indisponible</h1>
+      <p class="feature-form-copy">
+        Le CRM n'arrive pas a joindre le serveur. Recharge la page quand la connexion revient.
+      </p>
+      <div class="form-actions mt-3">
+        <p class="form-actions-copy">Les donnees temps reel necessitent une connexion active.</p>
+        <a class="btn btn-brand" href="/">Reessayer</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

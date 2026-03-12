@@ -655,6 +655,21 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/manifest.webmanifest")
+def manifest():
+    return send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+
+
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory(app.static_folder, "service-worker.js", mimetype="application/javascript")
+
+
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")
+
+
 @app.route("/")
 @login_required
 def index():

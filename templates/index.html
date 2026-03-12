@@ -74,13 +74,13 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head d-flex justify-content-between align-items-center">
+      <div class="panel-head panel-head-wrap">
         <span>Pipeline clients</span>
         <span class="badge text-bg-light border">{{ clients|length }} resultat(s)</span>
       </div>
       <div class="panel-body p-0">
         {% if clients %}
-        <div class="table-responsive">
+        <div class="table-responsive desktop-only">
           <table class="table table-hover align-middle">
             <thead>
               <tr>
@@ -130,7 +130,8 @@
                   <div class="text-muted">Aucun projet</div>
                   {% endif %}
                 </td>
-                <td class="d-flex gap-2">
+                <td>
+                  <div class="action-group">
                   <a class="btn btn-sm btn-outline-primary" href="/edit/{{ client.id }}">{{ "Modifier" if can_manage_clients else "Consulter" }}</a>
                   {% if can_manage_clients %}
                   <form action="/delete/{{ client.id }}" method="POST" class="m-0">
@@ -144,6 +145,7 @@
                     </button>
                   </form>
                   {% endif %}
+                  </div>
                 </td>
               </tr>
               {% if client.notes %}
@@ -156,6 +158,78 @@
               {% endfor %}
             </tbody>
           </table>
+        </div>
+        <div class="mobile-only mobile-card-list">
+          {% for client in clients %}
+          <article class="mobile-card">
+            <div class="mobile-card-title">{{ client.nom }}</div>
+            <div class="mobile-card-subtitle">
+              {{ client.entreprise or "Sans entreprise" }}
+              {% if client.email %}<br>{{ client.email }}{% endif %}
+              {% if client.telephone %}<br>{{ client.telephone }}{% endif %}
+            </div>
+
+            <div class="detail-list">
+              <div class="detail-row">
+                <div class="detail-label">Pipeline</div>
+                <div class="detail-value">
+                  <span class="badge-status badge-{{ client.statut }}">{{ status_choices.get(client.statut, client.statut) }}</span>
+                  <div class="text-muted small mt-2">Source: {{ source_choices.get(client.source, client.source) }}</div>
+                </div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Valeur</div>
+                <div class="detail-value fw-semibold">{{ "%.0f"|format(client.valeur_potentielle or 0) }} MAD</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Suivi</div>
+                <div class="detail-value">
+                  {{ client.prochaine_action or "Aucune action planifiee" }}
+                  {% if client.updated_at %}
+                  <div class="text-muted small mt-2">Maj: {{ client.updated_at.strftime("%d/%m/%Y %H:%M") }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Projet</div>
+                <div class="detail-value">
+                  {% if client.projects %}
+                  {% set project = client.projects[0] %}
+                  <div class="fw-semibold">{{ project.name }}</div>
+                  <div class="text-muted small">{{ project_status_choices.get(project.status, project.status) }} - {{ project.progress }}%</div>
+                  {% if client.projects|length > 1 %}
+                  <div class="text-muted small mt-1">+ {{ client.projects|length - 1 }} autre(s)</div>
+                  {% endif %}
+                  {% else %}
+                  <span class="text-muted">Aucun projet</span>
+                  {% endif %}
+                </div>
+              </div>
+              {% if client.notes %}
+              <div class="detail-row">
+                <div class="detail-label">Notes</div>
+                <div class="detail-value">{{ client.notes }}</div>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="action-group mt-3">
+              <a class="btn btn-sm btn-outline-primary" href="/edit/{{ client.id }}">{{ "Modifier" if can_manage_clients else "Consulter" }}</a>
+              {% if can_manage_clients %}
+              <form action="/delete/{{ client.id }}" method="POST" class="m-0">
+                {{ csrf_input() }}
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  type="submit"
+                  onclick='return confirm({{ ("Confirmer la suppression du client " ~ client.nom ~ " ?")|tojson }});'
+                >
+                  Supprimer
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
         </div>
         {% else %}
         <div class="p-3">

@@ -1,0 +1,19 @@
+{
+  "name": "Web CRM",
+  "short_name": "CRM",
+  "description": "CRM web responsive pour le suivi des clients, projets et utilisateurs.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0f4c81",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

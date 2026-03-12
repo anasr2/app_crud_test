@@ -1,0 +1,62 @@
+MISE A JOUR DU SITE
+===================
+
+Quand tu modifies le projet dans VS Code, fais ceci.
+
+1. SUR TON PC
+-------------
+Dans le dossier du projet :
+
+git add .
+git commit -m "Mon changement"
+git push origin main
+
+
+2. SUR LE VPS OVH
+-----------------
+Se connecter en SSH :
+
+ssh ubuntu@vps-fd57bf54.vps.ovh.net
+
+Ou avec ton utilisateur SSH reel si ce n'est pas ubuntu.
+
+Puis lancer :
+
+cd app_crud_test
+git pull
+sudo docker compose down
+sudo docker compose up -d --build
+
+
+3. VERIFIER
+-----------
+Verifier les conteneurs :
+
+sudo docker ps
+
+Verifier les logs :
+
+sudo docker compose logs -f
+
+
+4. TESTER LE SITE
+-----------------
+Ouvrir dans le navigateur :
+
+http://vps-fd57bf54.vps.ovh.net:5000
+
+
+5. VERSION COURTE
+-----------------
+PC :
+
+git add .
+git commit -m "Mon changement"
+git push origin main
+
+VPS :
+
+cd app_crud_test
+git pull
+sudo docker compose down
+sudo docker compose up -d --build
