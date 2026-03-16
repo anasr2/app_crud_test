@@ -12,11 +12,11 @@
           {{ csrf_input() }}
           <div>
             <label class="form-label fw-semibold">Nom d'utilisateur</label>
-            <input class="form-control" name="username" placeholder="Ex: admin" required>
+            <input class="form-control" name="username" required>
           </div>
           <div>
             <label class="form-label fw-semibold">Email</label>
-            <input class="form-control" name="email" placeholder="Ex: admin@email.com" type="email" required>
+            <input class="form-control" name="email" type="email" required>
           </div>
           <div>
             <label class="form-label fw-semibold">Profil</label>
@@ -26,7 +26,6 @@
               {% endfor %}
             </select>
           </div>
-          <div class="form-text">Un email d'activation sera envoye pour verifier l'adresse et definir le mot de passe.</div>
           <button class="btn btn-brand" type="submit">Inviter l'utilisateur</button>
         </form>
       </div>

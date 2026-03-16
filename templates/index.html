@@ -54,7 +54,7 @@
         <form method="GET" action="/" class="row g-2 align-items-end">
           <div class="col-md-7">
             <label class="form-label fw-semibold">Recherche</label>
-            <input class="form-control" name="q" value="{{ search }}" placeholder="Nom, email, entreprise ou telephone">
+            <input class="form-control" name="q" value="{{ search }}">
           </div>
           <div class="col-md-3">
             <label class="form-label fw-semibold">Statut</label>
@@ -247,7 +247,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <div>
-          <div class="feature-form-kicker">Ajout rapide</div>
           <h2 class="modal-title fs-4 mt-2" id="addClientModalLabel">Nouveau contact CRM</h2>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -255,37 +254,30 @@
       <div class="modal-body">
         <form action="/add" method="POST" class="feature-form" id="addClientForm">
           {{ csrf_input() }}
-          <div class="feature-form-hero">
-            <h3 class="feature-form-title">Cree une fiche exploitable des le premier contact</h3>
-            <p class="feature-form-copy">Renseigne les informations essentielles, le contexte commercial et la prochaine action pour alimenter le pipeline sans repasser plus tard sur la fiche.</p>
-          </div>
-
           <div class="form-section">
             <h3 class="form-section-title">Identite du prospect</h3>
-            <p class="form-section-copy">Les informations de base visibles tout de suite dans la liste CRM.</p>
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Nom</label>
-                <input class="form-control" name="nom" placeholder="Ex: Marie Dupont" required>
+                <input class="form-control" name="nom" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Entreprise</label>
-                <input class="form-control" name="entreprise" placeholder="Ex: Atlas Conseil" required>
+                <input class="form-control" name="entreprise" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Email</label>
-                <input class="form-control" name="email" placeholder="Ex: marie@email.com" type="email" required>
+                <input class="form-control" name="email" type="email" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Telephone</label>
-                <input class="form-control" name="telephone" placeholder="Ex: +212 6 12 34 56 78">
+                <input class="form-control" name="telephone">
               </div>
             </div>
           </div>
 
           <div class="form-section">
             <h3 class="form-section-title">Qualification commerciale</h3>
-            <p class="form-section-copy">Situe le contact dans le pipeline et estime son potentiel pour prioriser le suivi.</p>
             <div class="row g-3">
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Statut</label>
@@ -305,39 +297,27 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Valeur potentielle</label>
-                <input class="form-control" name="valeur_potentielle" placeholder="Ex: 25000" type="number" min="0" step="0.01">
-              </div>
-            </div>
-            <div class="form-hint-grid mt-3">
-              <div class="form-hint">
-                <strong>Prospect froid</strong>
-                Utilise un statut initial et une prochaine action courte pour enclencher le suivi.
-              </div>
-              <div class="form-hint">
-                <strong>Lead chaud</strong>
-                Renseigne une valeur estimee pour faire remonter le dossier dans les priorites.
+                <input class="form-control" name="valeur_potentielle" type="number" min="0" step="0.01">
               </div>
             </div>
           </div>
 
           <div class="form-section">
             <h3 class="form-section-title">Plan d'action</h3>
-            <p class="form-section-copy">Capture le prochain pas concret et le contexte utile pour l'equipe.</p>
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label fw-semibold">Prochaine action</label>
-                <input class="form-control" name="prochaine_action" placeholder="Ex: Appel de qualification mardi 10h">
+                <input class="form-control" name="prochaine_action">
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold">Notes</label>
-                <textarea class="form-control" name="notes" rows="5" placeholder="Contexte commercial, objections, besoins, niveau d'urgence..."></textarea>
+                <textarea class="form-control" name="notes" rows="5"></textarea>
               </div>
             </div>
           </div>
         </form>
       </div>
       <div class="modal-footer">
-        <p class="form-actions-copy me-auto">La fiche sera ajoutee directement au pipeline et pourra ensuite etre enrichie avec des projets, interactions et documents.</p>
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
         <button class="btn btn-brand" type="submit" form="addClientForm">Ajouter au CRM</button>
       </div>
